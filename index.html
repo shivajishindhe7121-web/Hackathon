@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bazaar — Hyperlocal Neighbourhood Marketplace</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            bazaar: {
+              50: '#fff7ed',
+              100: '#ffedd5',
+              200: '#fed7aa',
+              500: '#f97316', // Vibrant local Indian saffron-orange
+              600: '#ea580c',
+              700: '#c2410c',
+              800: '#9a3412',
+              900: '#7c2d12',
+            },
+            leaf: {
+              500: '#10b981',
+              600: '#059669',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons & React 18 CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Kannada:wght@400;600;700&display=swap');
+    
+    body {
+      font-family: 'Plus Jakarta Sans', 'Noto Sans Devanagari', 'Noto Sans Kannada', sans-serif;
+    }
+
+    /* Radar scan animation for hyperlocal discovery */
+    @keyframes radar-scan {
+      0% { transform: scale(0.3); opacity: 0.9; }
+      100% { transform: scale(2.4); opacity: 0; }
+    }
+    .radar-pulse {
+      animation: radar-scan 2.4s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    }
+
+    /* AI scanner laser */
+    @keyframes laser-sweep {
+      0% { top: 0%; opacity: 0.8; }
+      50% { top: 95%; opacity: 1; }
+      100% { top: 0%; opacity: 0.8; }
+    }
+    .laser-line {
+      animation: laser-sweep 2s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased selection:bg-orange-200">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    // --- MULTILINGUAL TRANSLATION DICTIONARY ---
+    const I18N = {
+      en: {
+        appName: "Bazaar",
+        tagline: "Every local shop, one tap away",
+        switchBuyer: "Buyer Mode",
+        switchSeller: "Seller Portal",
+        searchPlaceholder: "Search Atta, Milk, Dolo, Biscuits...",
+        speakToSearch: "Voice Search",
+        openNow: "Open Now",
+        allShops: "All Neighbourhood Shops",
+        compareTitle: "Compare Nearby Shops",
+        addToCart: "Add to Cart",
+        cartTitle: "Your Neighbourhood Cart",
+        checkout: "Proceed to Checkout",
+        payViaUpi: "Pay via Instant UPI / QR",
+        orderPlaced: "Order Placed Successfully!",
+        sellerDashboard: "Seller Growth & Orders",
+        aiListingTitle: "AI Photo-to-Listing",
+        aiListingDesc: "Snap a photo of the product. Gemini Vision drafts title, price, category & stock in seconds.",
+        aiDrafting: "AI is analyzing image details...",
+        publishProduct: "Publish to My Storefront",
+        lowStock: "Low Stock Alert",
+        acceptOrder: "Accept Order",
+        orderReady: "Mark Ready for Pickup",
+        completeOrder: "Complete Order",
+        growthCoach: "AI Growth Coach Insights",
+        whatsappAlert: "Send WhatsApp Order Update",
+        distance: "away",
+        mins: "mins pickup"
+      },
+      hi: {
+        appName: "बाज़ार",
+        tagline: "हर आस-पड़ोस की दुकान, एक क्लिक पर",
+        switchBuyer: "ग्राहक व्यू",
+        switchSeller: "दुकानदार पोर्टल",
+        searchPlaceholder: "आटा, दूध, डोलो, बिस्कुट खोजें...",
+        speakToSearch: "बोलकर खोजें",
+        openNow: "अभी खुली है",
+        allShops: "आस-पास की दुकानें",
+        compareTitle: "नज़दीकी दुकानों के दाम की तुलना",
+        addToCart: "कार्ट में जोड़ें",
+        cartTitle: "आपकी बाज़ार कार्ट",
+        checkout: "ऑर्डर आगे बढ़ाएं",
+        payViaUpi: "UPI / QR से तुरंत भुगतान करें",
+        orderPlaced: "ऑर्डर सफलतापूर्वक दर्ज!",
+        sellerDashboard: "दुकानदार डैशबोर्ड व ऑर्डर",
+        aiListingTitle: "फ़ोटो से AI लिस्टिंग",
+        aiListingDesc: "सामान की फोटो खींचें, AI नाम, दाम और श्रेणी अपने आप भर देगा।",
+        aiDrafting: "AI फ़ोटो को स्कैन कर रहा है...",
+        publishProduct: "दुकान पर लाइव करें",
+        lowStock: "कम स्टॉक चेतावनी",
+        acceptOrder: "ऑर्डर स्वीकार करें",
+        orderReady: "पिकअप के लिए तैयार करें",
+        completeOrder: "ऑर्डर पूरा हुआ",
+        growthCoach: "AI व्यापार कोच सुझाव",
+        whatsappAlert: "व्हाट्सएप पर ऑर्डर अपडेट भेजें",
+        distance: "दूरी",
+        mins: "मिनट में पिकअप"
+      },
+      kn: {
+        appName: "ಬಜಾರ್",
+        tagline: "ನಿಮ್ಮ ಹತ್ತಿರದ ಪ್ರತಿ ಅಂಗಡಿ, ಒಂದೇ ಟ್ಯಾಪ್‌ನಲ್ಲಿ",
+        switchBuyer: "ಗ್ರಾಹಕರ ವೀಕ್ಷಣೆ",
+        switchSeller: "ಮಾರಾಟಗಾರರ ಪೋರ್ಟಲ್",
+        searchPlaceholder: "ಹಿಟ್ಟು, ಹಾಲು, ಔಷಧಗಳು, ಬಿಸ್ಕತ್ತು ಹುಡುಕಿ...",
+        speakToSearch: "ಧ್ವನಿ ಹುಡುಕಾಟ",
+        openNow: "ಈಗ ತೆರೆದಿದೆ",
+        allShops: "ಹತ್ತಿರದ ಅಂಗಡಿಗಳು",
+        compareTitle: "ಹತ್ತಿರದ ಅಂಗಡಿಗಳ ಬೆಲೆ ಹೋಲಿಕೆ",
+        addToCart: "ಕಾರ್ಟ್‌ಗೆ ಸೇರಿಸಿ",
+        cartTitle: "ನಿಮ್ಮ ಬಜಾರ್ ಕಾರ್ಟ್",
+        checkout: "ಖರೀದಿಗೆ ಮುಂದುವರಿಯಿರಿ",
+        payViaUpi: "ತಕ್ಷಣದ UPI / QR ಮೂಲಕ ಪಾವತಿಸಿ",
+        orderPlaced: "ಆರ್ಡರ್ ಯಶಸ್ವಿಯಾಗಿದೆ!",
+        sellerDashboard: "ಮಾರಾಟಗಾರರ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",
+        aiListingTitle: "ಫೋಟೋದಿಂದ AI ಲಿಸ್ಟಿಂಗ್",
+        aiListingDesc: "ಉತ್ಪನ್ನದ ಫೋಟೋ ಕ್ಲಿಕ್ ಮಾಡಿ, AI ಶೀರ್ಷಿಕೆ ಮತ್ತು ಬೆಲೆಯನ್ನು ತಕ್ಷಣ ಭರ್ತಿ ಮಾಡುತ್ತದೆ.",
+        aiDrafting: "AI ಚಿತ್ರವನ್ನು ವಿಶ್ಲೇಷಿಸುತ್ತಿದೆ...",
+        publishProduct: "ಅಂಗಡಿಯಲ್ಲಿ ಲೈವ್ ಮಾಡಿ",
+        lowStock: "ಕಡಿಮೆ ಸ್ಟಾಕ್ ಎಚ್ಚರಿಕೆ",
+        acceptOrder: "ಆರ್ಡರ್ ಸ್ವೀಕರಿಸಿ",
+        orderReady: "ಪಿಕಪ್‌ಗೆ ಸಿದ್ಧವಾಗಿದೆ",
+        completeOrder: "ಆರ್ಡರ್ ಪೂರ್ಣಗೊಂಡಿದೆ",
+        growthCoach: "AI ವ್ಯಾಪಾರ ಸಲಹೆಗಳು",
+        whatsappAlert: "WhatsApp ಅಪ್‌ಡೇಟ್ ಕಳುಹಿಸಿ",
+        distance: "ದೂರ",
+        mins: "ನಿಮಿಷದಲ್ಲಿ ಪಿಕಪ್"
+      }
+    };
+
+    // --- SEED NEIGHBOURHOOD DATA ---
+    const INITIAL_SHOPS = [
+      {
+        id: "shop-1",
+        name: "Sharma Kirana & General Store",
+        category: "Groceries & Daily Essentials",
+        rating: 4.8,
+        reviewsCount: 142,
+        distanceMeters: 320,
+        address: "Cross Road 4, Sector 7",
+        phone: "+91 98450 12345",
+        isOpen: true,
+        pickupTimeMins: 10,
+        badge: "Trusted Local Kirana"
+      },
+      {
+        id: "shop-2",
+        name: "Green Leaf Organics & Fresh Mart",
+        category: "Vegetables, Dairy & Organic",
+        rating: 4.7,
+        reviewsCount: 98,
+        distanceMeters: 650,
+        address: "Opp. Community Park, Main Road",
+        phone: "+91 98450 54321",
+        isOpen: true,
+        pickupTimeMins: 15,
+        badge: "Farm Fresh"
+      },
+      {
+        id: "shop-3",
+        name: "Bangalore Iyengar Bakery",
+        category: "Bakery, Snacks & Dairy",
+        rating: 4.9,
+        reviewsCount: 310,
+        distanceMeters: 850,
+        address: "Near Water Tank, 2nd Stage",
+        phone: "+91 98450 99887",
+        isOpen: true,
+        pickupTimeMins: 12,
+        badge: "Bestseller Bakery"
+      },
+      {
+        id: "shop-4",
+        name: "Apollo Care & Meds",
+        category: "Pharmacy & Wellness",
+        rating: 4.9,
+        reviewsCount: 220,
+        distanceMeters: 1100,
+        address: "12th Cross, Market Junction",
+        phone: "+91 98450 11223",
+        isOpen: false,
+        pickupTimeMins: 20,
+        badge: "24x7 Emergency"
+      }
+    ];
+
+    const INITIAL_PRODUCTS = [
+      {
+        id: "prod-1",
+        shopId: "shop-1",
+        title: "Aashirvaad Superior Sharbati Atta 5kg",
+        category: "Atta & Flours",
+        price: 275,
+        mrp: 315,
+        stock: 14,
+        unit: "5 kg",
+        image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&auto=format&fit=crop&q=60",
+        description: "100% pure MP Sharbati wheat, whole grain rotis stay soft for hours.",
+        barcode: "890103038312"
+      },
+      {
+        id: "prod-2",
+        shopId: "shop-2",
+        title: "Aashirvaad Superior Sharbati Atta 5kg",
+        category: "Atta & Flours",
+        price: 290,
+        mrp: 315,
+        stock: 4, // Low stock demo!
+        unit: "5 kg",
+        image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&auto=format&fit=crop&q=60",
+        description: "Fresh stock from supplier, premium quality grain.",
+        barcode: "890103038312"
+      },
+      {
+        id: "prod-3",
+        shopId: "shop-1",
+        title: "Amul Pasteurized Butter 500g",
+        category: "Dairy & Milk",
+        price: 265,
+        mrp: 275,
+        stock: 3, // Low stock demo!
+        unit: "500 g",
+        image: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=400&auto=format&fit=crop&q=60",
+        description: "Classic Amul salted butter, wholesome nutrition from milk fat.",
+        barcode: "890126201005"
+      },
+      {
+        id: "prod-4",
+        shopId: "shop-3",
+        title: "Amul Pasteurized Butter 500g",
+        category: "Dairy & Milk",
+        price: 258,
+        mrp: 275,
+        stock: 22,
+        unit: "500 g",
+        image: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=400&auto=format&fit=crop&q=60",
+        description: "Chilled dairy stock, fresh from bakery refrigerator.",
+        barcode: "890126201005"
+      },
+      {
+        id: "prod-5",
+        shopId: "shop-1",
+        title: "Tata Tea Gold Leaf 500g",
+        category: "Beverages & Tea",
+        price: 310,
+        mrp: 350,
+        stock: 18,
+        unit: "500 g",
+        image: "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=400&auto=format&fit=crop&q=60",
+        description: "Fine CTC teas with 15% gently rolled long tea leaves for rich aroma.",
+        barcode: "890105200389"
+      },
+      {
+        id: "prod-6",
+        shopId: "shop-2",
+        title: "Tata Tea Gold Leaf 500g",
+        category: "Beverages & Tea",
+        price: 325,
+        mrp: 350,
+        stock: 9,
+        unit: "500 g",
+        image: "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=400&auto=format&fit=crop&q=60",
+        description: "Aromatic black tea for breakfast and evening tea time.",
+        barcode: "890105200389"
+      },
+      {
+        id: "prod-7",
+        shopId: "shop-3",
+        title: "Fresh Baked Rusk & Toast (Iyengar Special)",
+        category: "Bakery, Snacks & Dairy",
+        price: 65,
+        mrp: 75,
+        stock: 35,
+        unit: "300 g",
+        image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&auto=format&fit=crop&q=60",
+        description: "Cardamom flavored crispy toasts baked fresh every morning.",
+        barcode: "890882190112"
+      },
+      {
+        id: "prod-8",
+        shopId: "shop-1",
+        title: "Fortune Sunlite Refined Sunflower Oil 1L",
+        category: "Oils & Ghee",
+        price: 135,
+        mrp: 155,
+        stock: 12,
+        unit: "1 Litre",
+        image: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&auto=format&fit=crop&q=60",
+        description: "Light and healthy cooking oil enriched with vitamins A & D.",
+        barcode: "890600728101"
+      }
+    ];
+
+    // Sound chime helper using Web Audio API
+    function playOrderChime() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.12); // A5
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.6);
+      } catch (e) {
+        console.warn("Audio not permitted yet:", e);
+      }
+    }
+
+    // --- MAIN BAZAAR APPLICATION COMPONENT ---
+    function BazaarApp() {
+      // Core View State: 'buyer' | 'seller'
+      const [viewMode, setViewMode] = useState('buyer');
+      const [language, setLanguage] = useState('en');
+      const t = I18N[language] || I18N.en;
+
+      // Data States
+      const [shops, setShops] = useState(INITIAL_SHOPS);
+      const [products, setProducts] = useState(INITIAL_PRODUCTS);
+      const [orders, setOrders] = useState([
+        {
+          id: "ORD-9481",
+          buyerName: "Rahul Sharma",
+          buyerPhone: "+91 99001 22334",
+          shopId: "shop-1",
+          items: [{ title: "Tata Tea Gold Leaf 500g", qty: 1, price: 310 }],
+          totalAmount: 310,
+          paymentMode: "UPI (Paid)",
+          status: "ACCEPTED",
+          createdAt: "10 mins ago"
+        }
+      ]);
+
+      // Active Seller context (Sharma Kirana is default managed seller)
+      const activeSellerShopId = "shop-1";
+      const activeShop = shops.find(s => s.id === activeSellerShopId) || shops[0];
+
+      // Buyer Filters & Search
+      const [searchQuery, setSearchQuery] = useState("");
+      const [selectedCategory, setSelectedCategory] = useState("All");
+      const [onlyOpenShops, setOnlyOpenShops] = useState(false);
+      const [isListening, setIsListening] = useState(false);
+
+      // Comparison Modal State
+      const [comparingProduct, setComparingProduct] = useState(null);
+
+      // Cart State
+      const [cart, setCart] = useState([]);
+      const [isCartOpen, setIsCartOpen] = useState(false);
+      const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+      const [deliveryOption, setDeliveryOption] = useState("pickup"); // 'pickup' | 'delivery'
+
+      // AI Listing Modal State (Seller)
+      const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+      const [aiScanning, setAiScanning] = useState(false);
+      const [aiDraft, setAiDraft] = useState(null);
+      const [aiSelectedPreset, setAiSelectedPreset] = useState(null);
+
+      // Toast Notification
+      const [toastMessage, setToastMessage] = useState(null);
+      const [backendStatus, setBackendStatus] = useState('checking'); // 'connected' | 'standalone'
+
+      const showToast = (msg) => {
+        setToastMessage(msg);
+        setTimeout(() => setToastMessage(null), 3500);
+      };
+
+      // Auto-detect and sync with Node.js backend if running
+      useEffect(() => {
+        fetch('http://localhost:5000/api/health')
+          .then(res => res.json())
+          .then(data => {
+            if (data.status === 'online') {
+              setBackendStatus('connected');
+              showToast("⚡ Connected to Bazaar Express + Socket.io Backend!");
+            } else {
+              setBackendStatus('standalone');
+            }
+          })
+          .catch(() => setBackendStatus('standalone'));
+      }, []);
+
+      // Voice recognition setup
+      const handleVoiceSearch = () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+          // Fallback simulation for live demo
+          const samplePhrases = ["Tata Tea", "Atta", "Amul Butter", "Milk"];
+          const picked = samplePhrases[Math.floor(Math.random() * samplePhrases.length)];
+          setSearchQuery(picked);
+          showToast(`🎤 Voice recognized: "${picked}"`);
+          return;
+        }
+
+        try {
+          const recognition = new SpeechRecognition();
+          recognition.lang = language === 'hi' ? 'hi-IN' : language === 'kn' ? 'kn-IN' : 'en-IN';
+          recognition.interimResults = false;
+          setIsListening(true);
+
+          recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            setSearchQuery(transcript);
+            setIsListening(false);
+            showToast(`🎤 Heard: "${transcript}"`);
+          };
+
+          recognition.onerror = () => {
+            setIsListening(false);
+            // Graceful demo fallback
+            setSearchQuery("Amul Butter");
+            showToast("🎤 Fallback demo speech: 'Amul Butter'");
+          };
+
+          recognition.onend = () => setIsListening(false);
+          recognition.start();
+        } catch (err) {
+          setIsListening(false);
+          setSearchQuery("Aashirvaad Atta");
+          showToast("🎤 Voice Search triggered: 'Aashirvaad Atta'");
+        }
+      };
+
+      // Cart actions
+      const addToCart = (product, shop) => {
+        setCart(prev => {
+          const existing = prev.find(item => item.product.id === product.id);
+          if (existing) {
+            return prev.map(item => item.product.id === product.id ? { ...item, qty: item.qty + 1 } : item);
+          }
+          return [...prev, { product, shop, qty: 1 }];
+        });
+        showToast(`🛒 Added ${product.title} to cart!`);
+      };
+
+      const updateCartQty = (productId, delta) => {
+        setCart(prev => prev.map(item => {
+          if (item.product.id === productId) {
+            const newQty = item.qty + delta;
+            return newQty > 0 ? { ...item, qty: newQty } : null;
+          }
+          return item;
+        }).filter(Boolean));
+      };
+
+      const cartTotal = useMemo(() => {
+        return cart.reduce((sum, item) => sum + (item.product.price * item.qty), 0);
+      }, [cart]);
+
+      // Complete Order via UPI
+      const handleExecuteUpiOrder = () => {
+        if (cart.length === 0) return;
+        
+        const newOrderId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+        const primaryShopId = cart[0].shop.id;
+
+        const newOrder = {
+          id: newOrderId,
+          buyerName: "Aditi Rao",
+          buyerPhone: "+91 98451 77665",
+          shopId: primaryShopId,
+          items: cart.map(item => ({ title: item.product.title, qty: item.qty, price: item.product.price })),
+          totalAmount: cartTotal,
+          paymentMode: "UPI Instant (Paid)",
+          status: "PENDING",
+          createdAt: "Just now"
+        };
+
+        // Decrement stock in active inventory
+        setProducts(prev => prev.map(p => {
+          const orderedItem = cart.find(c => c.product.id === p.id);
+          if (orderedItem) {
+            const updatedStock = Math.max(0, p.stock - orderedItem.qty);
+            return { ...p, stock: updatedStock };
+          }
+          return p;
+        }));
+
+        setOrders(prev => [newOrder, ...prev]);
+        setCart([]);
+        setIsCheckoutModalOpen(false);
+        setIsCartOpen(false);
+
+        // Confetti celebration
+        if (window.confetti) {
+          window.confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
+        }
+        playOrderChime();
+        showToast(`🎉 Order #${newOrderId} confirmed! UPI Payment Successful.`);
+      };
+
+      // Seller Order Actions
+      const handleSellerUpdateStatus = (orderId, nextStatus) => {
+        setOrders(prev => prev.map(ord => ord.id === orderId ? { ...ord, status: nextStatus } : ord));
+        playOrderChime();
+        showToast(`Order ${orderId} moved to: ${nextStatus}`);
+      };
+
+      // Inline Stock Modifier in Seller Portal
+      const handleUpdateStock = (productId, delta) => {
+        setProducts(prev => prev.map(p => {
+          if (p.id === productId) {
+            const nextStock = Math.max(0, p.stock + delta);
+            return { ...p, stock: nextStock };
+          }
+          return p;
+        }));
+      };
+
+      // AI Photo Analysis Trigger (Simulated Gemini Multimodal Vision)
+      const triggerAiPhotoScanning = (presetName) => {
+        setAiSelectedPreset(presetName);
+        setAiScanning(true);
+        setAiDraft(null);
+
+        setTimeout(() => {
+          setAiScanning(false);
+          if (presetName === 'fortune_oil') {
+            setAiDraft({
+              title: "Fortune Sunlite Refined Sunflower Oil 1L",
+              category: "Oils & Ghee",
+              price: 135,
+              mrp: 155,
+              stock: 20,
+              unit: "1 Litre",
+              image: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&auto=format&fit=crop&q=60",
+              description: "High oleic refined sunflower cooking oil with Vitamin A & D fortifiers.",
+              confidence: "98.4% Gemini Vision Match"
+            });
+          } else if (presetName === 'tata_salt') {
+            setAiDraft({
+              title: "Tata Salt Vacuum Evaporated Iodized 1kg",
+              category: "Spices & Condiments",
+              price: 28,
+              mrp: 30,
+              stock: 35,
+              unit: "1 kg",
+              image: "https://images.unsplash.com/photo-1518110925495-5fe2fda0442c?w=400&auto=format&fit=crop&q=60",
+              description: "Desh ka Namak. Pure vacuum evaporated iodized salt for daily cooking.",
+              confidence: "99.1% Gemini Vision Match"
+            });
+          } else {
+            setAiDraft({
+              title: "Haldiram's Bhujia Sev 400g Crispy Snack",
+              category: "Bakery, Snacks & Dairy",
+              price: 110,
+              mrp: 125,
+              stock: 18,
+              unit: "400 g",
+              image: "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=400&auto=format&fit=crop&q=60",
+              description: "Traditional spicy Rajasthani moth bean and gram flour crunchy noodles.",
+              confidence: "97.8% Gemini Vision Match"
+            });
+          }
+        }, 1500);
+      };
+
+      // Add AI drafted product into active seller shop
+      const handlePublishAiProduct = () => {
+        if (!aiDraft) return;
+        const newProduct = {
+          id: `prod-${Date.now()}`,
+          shopId: activeSellerShopId,
+          ...aiDraft
+        };
+        setProducts(prev => [newProduct, ...prev]);
+        setIsAiModalOpen(false);
+        setAiDraft(null);
+        setAiSelectedPreset(null);
+        showToast(`✨ ${newProduct.title} is now LIVE on your storefront!`);
+      };
+
+      // Filtered Buyer Products
+      const filteredProducts = useMemo(() => {
+        return products.filter(p => {
+          const shop = shops.find(s => s.id === p.shopId);
+          if (onlyOpenShops && !shop?.isOpen) return false;
+          if (selectedCategory !== "All" && p.category !== selectedCategory) return false;
+          if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            return p.title.toLowerCase().includes(q) || 
+                   p.category.toLowerCase().includes(q) || 
+                   shop?.name.toLowerCase().includes(q);
+          }
+          return true;
+        });
+      }, [products, shops, selectedCategory, searchQuery, onlyOpenShops]);
+
+      // Comparison Candidates Finder
+      const getComparisonShops = (product) => {
+        if (!product) return [];
+        // Match other items with exact same or similar title
+        const matches = products.filter(p => 
+          p.title.toLowerCase() === product.title.toLowerCase() ||
+          p.barcode === product.barcode
+        );
+        return matches.map(m => {
+          const shop = shops.find(s => s.id === m.shopId);
+          return {
+            product: m,
+            shop: shop
+          };
+        }).sort((a, b) => a.product.price - b.product.price);
+      };
+
+      // Quick 3-Min Demo Script Navigator
+      const runDemoStep = (stepNumber) => {
+        if (stepNumber === 1) {
+          setViewMode('seller');
+          setIsAiModalOpen(true);
+          triggerAiPhotoScanning('tata_salt');
+          showToast("Demo Step 1: Snap photo ➔ AI auto-drafts listing");
+        } else if (stepNumber === 2) {
+          setViewMode('buyer');
+          setSearchQuery("Aashirvaad Atta");
+          const sampleProd = products.find(p => p.title.includes("Aashirvaad"));
+          if (sampleProd) setComparingProduct(sampleProd);
+          showToast("Demo Step 2: Voice Search & Compare Nearby Shops");
+        } else if (stepNumber === 3) {
+          setViewMode('buyer');
+          const sampleProd = products[0];
+          const sampleShop = shops[0];
+          setCart([{ product: sampleProd, shop: sampleShop, qty: 1 }]);
+          setIsCheckoutModalOpen(true);
+          showToast("Demo Step 3: 1-Tap UPI Payment Checkout");
+        } else if (stepNumber === 4) {
+          setViewMode('seller');
+          setIsCheckoutModalOpen(false);
+          setIsCartOpen(false);
+          showToast("Demo Step 4: Seller Live Order Accept & AI Growth Coach");
+        }
+      };
+
+      return (
+        <div className="min-h-screen flex flex-col bg-slate-100 text-slate-800">
+          
+          {/* --- TOP 3-MINUTE HACKATHON LIVE DEMO BAR --- */}
+          <header className="bg-slate-900 text-white text-xs px-3 py-2 flex flex-wrap items-center justify-between border-b border-slate-800 sticky top-0 z-50">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2.5 w-2.5 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <span className="font-bold tracking-wide text-orange-400 uppercase">Bazaar Demo Navigator</span>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${backendStatus === 'connected' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'}`}>
+                {backendStatus === 'connected' ? '🟢 Backend API Live' : '🟡 Standalone Demo'}
+              </span>
+              <span className="hidden sm:inline text-slate-400">| 3-Minute Live Hackathon Pitch Flow:</span>
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button 
+                onClick={() => runDemoStep(1)} 
+                className="bg-slate-800 hover:bg-orange-600 px-2.5 py-1 rounded font-medium text-slate-200 transition">
+                1. AI Photo Listing
+              </button>
+              <button 
+                onClick={() => runDemoStep(2)} 
+                className="bg-slate-800 hover:bg-orange-600 px-2.5 py-1 rounded font-medium text-slate-200 transition">
+                2. Compare Nearby
+              </button>
+              <button 
+                onClick={() => runDemoStep(3)} 
+                className="bg-slate-800 hover:bg-orange-600 px-2.5 py-1 rounded font-medium text-slate-200 transition">
+                3. UPI Checkout
+              </button>
+              <button 
+                onClick={() => runDemoStep(4)} 
+                className="bg-slate-800 hover:bg-orange-600 px-2.5 py-1 rounded font-medium text-slate-200 transition">
+                4. Seller Order & AI Coach
+              </button>
+            </div>
+          </header>
+
+          {/* --- MAIN NAVIGATION BAR --- */}
+          <nav className="bg-white border-b border-slate-200 px-4 py-3 sticky top-9 z-40 shadow-sm">
+            <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+              
+              {/* Brand Logo & Location */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center text-white shadow-md shadow-orange-500/20 font-extrabold text-xl">
+                  B
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold text-xl tracking-tight text-slate-900">{t.appName}</span>
+                    <span className="bg-orange-100 text-orange-700 font-bold text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider">
+                      Hyperlocal
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-500 flex items-center gap-1">
+                    <span className="text-emerald-600 font-semibold">📍 Koramangala, Sector 4</span>
+                    <span>• Bengaluru</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Center Language Switcher */}
+              <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-semibold">
+                <button 
+                  onClick={() => setLanguage('en')} 
+                  className={`px-2.5 py-1 rounded-md transition ${language === 'en' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>
+                  English
+                </button>
+                <button 
+                  onClick={() => setLanguage('hi')} 
+                  className={`px-2.5 py-1 rounded-md transition ${language === 'hi' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>
+                  हिन्दी
+                </button>
+                <button 
+                  onClick={() => setLanguage('kn')} 
+                  className={`px-2.5 py-1 rounded-md transition ${language === 'kn' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>
+                  ಕನ್ನಡ
+                </button>
+              </div>
+
+              {/* View Switcher & Cart */}
+              <div className="flex items-center gap-3">
+                <div className="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200 text-xs font-bold">
+                  <button 
+                    onClick={() => setViewMode('buyer')} 
+                    className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition ${viewMode === 'buyer' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-600'}`}>
+                    <span>🛍️</span>
+                    <span>{t.switchBuyer}</span>
+                  </button>
+                  <button 
+                    onClick={() => setViewMode('seller')} 
+                    className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition ${viewMode === 'seller' ? 'bg-orange-600 text-white shadow-sm' : 'text-slate-600'}`}>
+                    <span>🏪</span>
+                    <span>{t.switchSeller}</span>
+                    {orders.filter(o => o.status === 'PENDING').length > 0 && (
+                      <span className="bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center ml-0.5">
+                        {orders.filter(o => o.status === 'PENDING').length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                {viewMode === 'buyer' && (
+                  <button 
+                    onClick={() => setIsCartOpen(true)} 
+                    className="relative bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 p-2 rounded-xl transition flex items-center gap-2">
+                    <span className="text-lg">🛒</span>
+                    <span className="hidden md:inline font-bold text-xs">₹{cartTotal}</span>
+                    {cart.length > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 bg-orange-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow">
+                        {cart.reduce((s, i) => s + i.qty, 0)}
+                      </span>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          </nav>
+
+          {/* --- VIEW MODE: BUYER EXPERIENCE --- */}
+          {viewMode === 'buyer' && (
+            <main className="max-w-7xl mx-auto px-4 py-6 w-full flex-1">
+              
+              {/* Hyperlocal Radar Banner */}
+              <div className="bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700 text-white rounded-3xl p-6 sm:p-8 mb-8 shadow-xl relative overflow-hidden">
+                <div className="relative z-10 max-w-2xl">
+                  <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold mb-3">
+                    <span className="w-2 h-2 rounded-full bg-emerald-300"></span>
+                    <span>14 Neighbourhood Stores Active within 1.5 km</span>
+                  </div>
+                  <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2">
+                    {t.tagline}
+                  </h1>
+                  <p className="text-orange-100 text-sm mb-6">
+                    Support local retail. Same-day 15-minute pickup or doorstep delivery, transparent prices, zero hidden fees.
+                  </p>
+
+                  {/* Universal Search & Voice Search Input */}
+                  <div className="bg-white rounded-2xl p-2 shadow-2xl flex items-center gap-2 text-slate-800">
+                    <span className="text-slate-400 pl-3 text-lg">🔍</span>
+                    <input 
+                      type="text" 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder={t.searchPlaceholder}
+                      className="w-full bg-transparent outline-none text-sm font-medium text-slate-900 placeholder-slate-400"
+                    />
+
+                    {searchQuery && (
+                      <button 
+                        onClick={() => setSearchQuery("")} 
+                        className="text-xs text-slate-400 hover:text-slate-600 p-1">
+                        ✕
+                      </button>
+                    )}
+
+                    {/* Microphone Voice Search Button */}
+                    <button 
+                      onClick={handleVoiceSearch}
+                      title={t.speakToSearch}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-orange-100 hover:bg-orange-200 text-orange-700'}`}>
+                      <span>🎙️</span>
+                      <span className="hidden sm:inline">{isListening ? 'Listening...' : t.speakToSearch}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Radar Visual Widget Decoration */}
+                <div className="absolute right-6 -bottom-10 opacity-20 lg:opacity-35 pointer-events-none hidden sm:block">
+                  <div className="relative w-64 h-64 flex items-center justify-center">
+                    <div className="absolute w-64 h-64 border border-white rounded-full radar-pulse"></div>
+                    <div className="absolute w-48 h-48 border border-white rounded-full"></div>
+                    <div className="absolute w-32 h-32 border border-white rounded-full"></div>
+                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-orange-600 font-bold shadow-lg">
+                      📍
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Category Pills & Open Now Filter */}
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none text-xs font-semibold">
+                  {["All", "Atta & Flours", "Dairy & Milk", "Beverages & Tea", "Bakery, Snacks & Dairy", "Oils & Ghee"].map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`px-3 py-1.5 rounded-full whitespace-nowrap transition border ${selectedCategory === cat ? 'bg-orange-600 text-white border-orange-600 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:border-orange-300'}`}>
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-white px-3 py-1.5 rounded-full border border-slate-200 cursor-pointer shadow-sm">
+                  <input 
+                    type="checkbox" 
+                    checked={onlyOpenShops} 
+                    onChange={(e) => setOnlyOpenShops(e.target.checked)} 
+                    className="accent-orange-600 w-4 h-4 rounded"
+                  />
+                  <span>🟢 {t.openNow}</span>
+                </label>
+              </div>
+
+              {/* Hyperlocal Shops Carousel / Cards */}
+              <div className="mb-10">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <span>🏬</span>
+                    <span>{t.allShops}</span>
+                  </h2>
+                  <span className="text-xs text-slate-500">Sorted by physical distance</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {shops.map(shop => (
+                    <div 
+                      key={shop.id} 
+                      className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <span className="bg-amber-50 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-200">
+                            {shop.badge}
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${shop.isOpen ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                            {shop.isOpen ? 'Open Now' : 'Closed'}
+                          </span>
+                        </div>
+                        <h3 className="font-bold text-sm text-slate-900 leading-snug mb-1">{shop.name}</h3>
+                        <p className="text-xs text-slate-500 mb-2">{shop.category}</p>
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+                        <span className="font-bold text-orange-600">📍 {shop.distanceMeters}m {t.distance}</span>
+                        <span>⚡ {shop.pickupTimeMins} {t.mins}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Product Catalog Grid with Compare Feature */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">Neighborhood Products ({filteredProducts.length})</h2>
+                    <p className="text-xs text-slate-500">Tap "Compare Nearby" to see live prices across nearby stores</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+                  {filteredProducts.map(product => {
+                    const shop = shops.find(s => s.id === product.shopId);
+                    const isLowStock = product.stock <= 5;
+                    const comparisonCount = getComparisonShops(product).length;
+
+                    return (
+                      <div 
+                        key={product.id} 
+                        className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-lg transition flex flex-col justify-between group">
+                        
+                        {/* Product Image & Badges */}
+                        <div className="relative h-44 bg-slate-100 overflow-hidden">
+                          <img 
+                            src={product.image} 
+                            alt={product.title} 
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-300" 
+                          />
+                          <div className="absolute top-2 left-2 flex flex-col gap-1">
+                            <span className="bg-white/95 backdrop-blur text-slate-800 text-[11px] font-bold px-2 py-0.5 rounded-md shadow-sm">
+                              {product.unit}
+                            </span>
+                            {isLowStock && (
+                              <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm animate-pulse">
+                                Only {product.stock} left!
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="absolute bottom-2 right-2 bg-slate-900/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur">
+                            📍 {shop?.distanceMeters}m
+                          </div>
+                        </div>
+
+                        {/* Details */}
+                        <div className="p-4 flex-1 flex flex-col justify-between">
+                          <div>
+                            <div className="text-[11px] text-orange-600 font-semibold mb-0.5">{product.category}</div>
+                            <h3 className="font-bold text-sm text-slate-900 leading-snug line-clamp-2 mb-1">{product.title}</h3>
+                            <div className="text-xs text-slate-500 flex items-center gap-1 mb-3">
+                              <span>🏪 {shop?.name}</span>
+                            </div>
+                          </div>
+
+                          <div>
+                            {/* Price */}
+                            <div className="flex items-baseline gap-2 mb-3">
+                              <span className="text-lg font-extrabold text-slate-900">₹{product.price}</span>
+                              {product.mrp > product.price && (
+                                <span className="text-xs text-slate-400 line-through">₹{product.mrp}</span>
+                              )}
+                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                                Save ₹{product.mrp - product.price}
+                              </span>
+                            </div>
+
+                            {/* Actions: Compare + Add to Cart */}
+                            <div className="flex items-center gap-2">
+                              {comparisonCount > 1 && (
+                                <button 
+                                  onClick={() => setComparingProduct(product)} 
+                                  className="w-1/2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold py-2 px-2 rounded-xl transition flex items-center justify-center gap-1"
+                                  title="Check prices at other neighbourhood shops">
+                                  <span>⚖️ Compare</span>
+                                </button>
+                              )}
+                              <button 
+                                onClick={() => addToCart(product, shop)}
+                                className={`${comparisonCount > 1 ? 'w-1/2' : 'w-full'} bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold py-2 px-3 rounded-xl shadow-sm transition flex items-center justify-center gap-1`}>
+                                <span>+ {t.addToCart}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </main>
+          )}
+
+          {/* --- VIEW MODE: SELLER PORTAL & DASHBOARD --- */}
+          {viewMode === 'seller' && (
+            <main className="max-w-7xl mx-auto px-4 py-6 w-full flex-1">
+              
+              {/* Seller Header Summary */}
+              <div className="bg-white rounded-3xl border border-slate-200 p-6 mb-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-full">
+                      Verified Storefront
+                    </span>
+                    <span className="text-xs text-slate-500">ID: {activeShop.id}</span>
+                  </div>
+                  <h1 className="text-2xl font-extrabold text-slate-900">{activeShop.name}</h1>
+                  <p className="text-xs text-slate-500">📍 {activeShop.address} • Phone: {activeShop.phone}</p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* AI Photo-to-Listing Action Button */}
+                  <button 
+                    onClick={() => { setIsAiModalOpen(true); triggerAiPhotoScanning('fortune_oil'); }}
+                    className="bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-700 hover:to-amber-600 text-white font-extrabold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-md shadow-orange-500/20 flex items-center gap-2 transition">
+                    <span>✨</span>
+                    <span>{t.aiListingTitle}</span>
+                  </button>
+
+                  <a 
+                    href={`https://wa.me/?text=Check%20out%20my%20online%20store%20on%20Bazaar:%20bazaar.local/shop/${activeShop.id}`} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 transition">
+                    <span>💬</span>
+                    <span>WhatsApp Storefront</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Analytics & AI Growth Coach Bar */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                  <div className="text-xs font-bold text-slate-500 uppercase">Today's Revenue</div>
+                  <div className="text-2xl font-extrabold text-slate-900 mt-1">₹4,890</div>
+                  <div className="text-[11px] text-emerald-600 font-semibold mt-1">↑ 18% vs yesterday</div>
+                </div>
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                  <div className="text-xs font-bold text-slate-500 uppercase">Total Orders</div>
+                  <div className="text-2xl font-extrabold text-slate-900 mt-1">{orders.length + 18}</div>
+                  <div className="text-[11px] text-slate-500 mt-1">Average Order Value: ₹270</div>
+                </div>
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                  <div className="text-xs font-bold text-slate-500 uppercase">Low Stock Alerts</div>
+                  <div className="text-2xl font-extrabold text-amber-600 mt-1">
+                    {products.filter(p => p.shopId === activeSellerShopId && p.stock <= 5).length} Items
+                  </div>
+                  <div className="text-[11px] text-red-500 font-semibold mt-1">Restock required</div>
+                </div>
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                  <div className="text-xs font-bold text-slate-500 uppercase">Repeat Customers</div>
+                  <div className="text-2xl font-extrabold text-purple-600 mt-1">74%</div>
+                  <div className="text-[11px] text-purple-600 font-semibold mt-1">Strong local loyalty</div>
+                </div>
+              </div>
+
+              {/* AI Seller Growth Coach Widget */}
+              <div className="bg-gradient-to-r from-purple-900 to-indigo-900 text-white rounded-3xl p-6 mb-8 shadow-md">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xl">🤖</span>
+                  <h2 className="font-extrabold text-base tracking-wide text-purple-200">{t.growthCoach}</h2>
+                  <span className="bg-purple-500/30 text-purple-200 text-[10px] font-bold px-2 py-0.5 rounded-full ml-auto">
+                    Live Engine
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div className="bg-white/10 rounded-2xl p-4 backdrop-blur border border-white/10">
+                    <div className="text-xs font-bold text-amber-300 mb-1">⚡ Weekend Kirana Demand Spike</div>
+                    <p className="text-xs text-purple-100">
+                      "Atta & Refined Cooking Oil demand surges 35% on Saturday morning. Keep at least 25 packets stocked to avoid missed sales."
+                    </p>
+                  </div>
+                  <div className="bg-white/10 rounded-2xl p-4 backdrop-blur border border-white/10">
+                    <div className="text-xs font-bold text-emerald-300 mb-1">💡 Smart Bundle Opportunity</div>
+                    <p className="text-xs text-purple-100">
+                      "Shoppers buying Tata Tea Gold often buy Parle-G or Iyengar Rusk. Creating a combo offer will increase your basket size by 22%."
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Orders Queue */}
+              <div className="mb-10">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <span>📦</span>
+                    <span>Live Customer Orders ({orders.length})</span>
+                  </h2>
+                  <span className="text-xs text-emerald-600 font-semibold">● Real-time synced</span>
+                </div>
+
+                {orders.length === 0 ? (
+                  <div className="bg-white rounded-2xl p-8 text-center text-slate-400 border border-slate-200">
+                    No pending orders right now. Switch to Buyer mode and place one!
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {orders.map(order => (
+                      <div 
+                        key={order.id} 
+                        className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-3">
+                            <span className="font-extrabold text-sm text-slate-900">{order.id}</span>
+                            <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${
+                              order.status === 'PENDING' ? 'bg-amber-100 text-amber-800 animate-pulse' :
+                              order.status === 'ACCEPTED' ? 'bg-blue-100 text-blue-800' :
+                              order.status === 'READY' ? 'bg-purple-100 text-purple-800' :
+                              'bg-emerald-100 text-emerald-800'
+                            }`}>
+                              {order.status}
+                            </span>
+                          </div>
+
+                          <div className="text-xs text-slate-600 mb-3">
+                            <div className="font-semibold text-slate-800">👤 {order.buyerName}</div>
+                            <div>📞 {order.buyerPhone}</div>
+                            <div className="text-[11px] text-slate-400 mt-0.5">Placed: {order.createdAt}</div>
+                          </div>
+
+                          <div className="bg-slate-50 rounded-xl p-3 mb-4 text-xs">
+                            <div className="font-bold text-slate-500 mb-1 text-[11px] uppercase">Items Ordered</div>
+                            {order.items.map((it, idx) => (
+                              <div key={idx} className="flex justify-between py-0.5">
+                                <span>{it.title} × {it.qty}</span>
+                                <span className="font-bold">₹{it.price * it.qty}</span>
+                              </div>
+                            ))}
+                            <div className="border-t border-slate-200 mt-2 pt-1 flex justify-between font-extrabold text-slate-900">
+                              <span>Total ({order.paymentMode})</span>
+                              <span>₹{order.totalAmount}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Order Status Action Buttons */}
+                        <div className="flex flex-col gap-2">
+                          {order.status === 'PENDING' && (
+                            <button 
+                              onClick={() => handleSellerUpdateStatus(order.id, 'ACCEPTED')}
+                              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl transition shadow-sm">
+                              ✓ {t.acceptOrder}
+                            </button>
+                          )}
+                          {order.status === 'ACCEPTED' && (
+                            <button 
+                              onClick={() => handleSellerUpdateStatus(order.id, 'READY')}
+                              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs py-2.5 rounded-xl transition shadow-sm">
+                              🛍️ {t.orderReady}
+                            </button>
+                          )}
+                          {order.status === 'READY' && (
+                            <button 
+                              onClick={() => handleSellerUpdateStatus(order.id, 'COMPLETED')}
+                              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 rounded-xl transition shadow-sm">
+                              🏁 {t.completeOrder}
+                            </button>
+                          )}
+                          
+                          <a 
+                            href={`https://wa.me/${order.buyerPhone.replace(/[^0-9]/g, '')}?text=Hi%20${encodeURIComponent(order.buyerName)},%20your%20order%20${order.id}%20at%20${encodeURIComponent(activeShop.name)}%20is%20${order.status}!`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold text-[11px] py-1.5 rounded-xl text-center transition flex items-center justify-center gap-1">
+                            <span>💬 {t.whatsappAlert}</span>
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Store Catalog & Inventory Table */}
+              <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">Your Store Inventory ({products.filter(p => p.shopId === activeSellerShopId).length})</h2>
+                    <p className="text-xs text-slate-500">One-tap stock adjustment with auto low-stock alerts</p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-400 uppercase font-semibold">
+                        <th className="pb-3">Product</th>
+                        <th className="pb-3">Category</th>
+                        <th className="pb-3">Price / MRP</th>
+                        <th className="pb-3 text-center">Live Stock</th>
+                        <th className="pb-3 text-right">Quick Adjust</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {products.filter(p => p.shopId === activeSellerShopId).map(prod => (
+                        <tr key={prod.id} className="hover:bg-slate-50 transition">
+                          <td className="py-3 font-semibold text-slate-900 flex items-center gap-3">
+                            <img src={prod.image} alt={prod.title} className="w-10 h-10 rounded-lg object-cover border" />
+                            <div>
+                              <div>{prod.title}</div>
+                              <div className="text-[10px] text-slate-400">{prod.unit}</div>
+                            </div>
+                          </td>
+                          <td className="py-3 text-slate-600">{prod.category}</td>
+                          <td className="py-3 font-bold text-slate-900">₹{prod.price} <span className="text-[10px] text-slate-400 line-through">₹{prod.mrp}</span></td>
+                          <td className="py-3 text-center">
+                            <span className={`px-2 py-1 rounded-full font-bold text-[11px] ${prod.stock <= 5 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                              {prod.stock} units
+                            </span>
+                          </td>
+                          <td className="py-3 text-right">
+                            <div className="inline-flex items-center gap-1 bg-slate-100 rounded-lg p-0.5 border border-slate-200 font-bold">
+                              <button 
+                                onClick={() => handleUpdateStock(prod.id, -1)}
+                                className="w-6 h-6 rounded bg-white hover:bg-slate-200 flex items-center justify-center text-slate-700 shadow-xs">
+                                -
+                              </button>
+                              <span className="w-6 text-center text-xs">{prod.stock}</span>
+                              <button 
+                                onClick={() => handleUpdateStock(prod.id, 1)}
+                                className="w-6 h-6 rounded bg-white hover:bg-slate-200 flex items-center justify-center text-slate-700 shadow-xs">
+                                +
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </main>
+          )}
+
+          {/* --- AI PHOTO-TO-LISTING MODAL (SELLER) --- */}
+          {isAiModalOpen && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl relative border border-slate-200 max-h-[90vh] overflow-y-auto">
+                <button 
+                  onClick={() => setIsAiModalOpen(false)} 
+                  className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg font-bold">
+                  ✕
+                </button>
+
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-8 h-8 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-lg">
+                    ✨
+                  </span>
+                  <div>
+                    <h2 className="font-extrabold text-lg text-slate-900">{t.aiListingTitle}</h2>
+                    <p className="text-xs text-slate-500">{t.aiListingDesc}</p>
+                  </div>
+                </div>
+
+                {/* Sample Photo selector for quick live demo */}
+                <div className="my-4">
+                  <div className="text-xs font-bold text-slate-600 mb-2">Select a Sample Photo to Test Gemini Vision:</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button 
+                      onClick={() => triggerAiPhotoScanning('fortune_oil')}
+                      className={`p-2 rounded-xl border text-left transition ${aiSelectedPreset === 'fortune_oil' ? 'border-orange-600 bg-orange-50' : 'border-slate-200 hover:border-orange-300'}`}>
+                      <div className="text-xl mb-1">🌻</div>
+                      <div className="font-bold text-[11px] text-slate-800">Fortune Sunflower Oil</div>
+                    </button>
+                    <button 
+                      onClick={() => triggerAiPhotoScanning('tata_salt')}
+                      className={`p-2 rounded-xl border text-left transition ${aiSelectedPreset === 'tata_salt' ? 'border-orange-600 bg-orange-50' : 'border-slate-200 hover:border-orange-300'}`}>
+                      <div className="text-xl mb-1">🧂</div>
+                      <div className="font-bold text-[11px] text-slate-800">Tata Salt 1kg</div>
+                    </button>
+                    <button 
+                      onClick={() => triggerAiPhotoScanning('bhujia')}
+                      className={`p-2 rounded-xl border text-left transition ${aiSelectedPreset === 'bhujia' ? 'border-orange-600 bg-orange-50' : 'border-slate-200 hover:border-orange-300'}`}>
+                      <div className="text-xl mb-1">🥨</div>
+                      <div className="font-bold text-[11px] text-slate-800">Haldiram Bhujia</div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* AI Scanner / Camera Area */}
+                <div className="relative h-48 bg-slate-900 rounded-2xl overflow-hidden flex items-center justify-center my-4 border border-slate-800">
+                  {aiDraft ? (
+                    <img src={aiDraft.image} alt={aiDraft.title} className="w-full h-full object-cover opacity-80" />
+                  ) : (
+                    <div className="text-center text-slate-400">
+                      <div className="text-3xl mb-1">📸</div>
+                      <div className="text-xs font-semibold">Simulating Smartphone Camera Lens</div>
+                    </div>
+                  )}
+
+                  {aiScanning && (
+                    <div className="absolute inset-0 bg-orange-500/10 flex flex-col items-center justify-center">
+                      <div className="absolute w-full h-1 bg-orange-400 shadow-[0_0_15px_#f97316] laser-line"></div>
+                      <div className="bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+                        <span className="animate-spin">⏳</span>
+                        <span>{t.aiDrafting}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* AI Draft Result */}
+                {aiDraft && !aiScanning && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                        ✓ {aiDraft.confidence}
+                      </span>
+                      <span className="text-slate-400">Ready to Publish</span>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Product Title</label>
+                      <input 
+                        type="text" 
+                        value={aiDraft.title} 
+                        onChange={(e) => setAiDraft({...aiDraft, title: e.target.value})}
+                        className="w-full text-xs font-bold bg-white border border-slate-200 rounded-lg p-2 outline-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Category</label>
+                        <input 
+                          type="text" 
+                          value={aiDraft.category} 
+                          onChange={(e) => setAiDraft({...aiDraft, category: e.target.value})}
+                          className="w-full text-xs font-bold bg-white border border-slate-200 rounded-lg p-2 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Selling Price (₹)</label>
+                        <input 
+                          type="number" 
+                          value={aiDraft.price} 
+                          onChange={(e) => setAiDraft({...aiDraft, price: Number(e.target.value)})}
+                          className="w-full text-xs font-bold bg-white border border-slate-200 rounded-lg p-2 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Initial Stock</label>
+                        <input 
+                          type="number" 
+                          value={aiDraft.stock} 
+                          onChange={(e) => setAiDraft({...aiDraft, stock: Number(e.target.value)})}
+                          className="w-full text-xs font-bold bg-white border border-slate-200 rounded-lg p-2 outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">AI Description</label>
+                      <p className="text-xs text-slate-600 bg-white border border-slate-200 rounded-lg p-2">
+                        {aiDraft.description}
+                      </p>
+                    </div>
+
+                    <button 
+                      onClick={handlePublishAiProduct}
+                      className="w-full bg-orange-600 hover:bg-orange-700 text-white font-extrabold text-xs py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2">
+                      <span>🚀</span>
+                      <span>{t.publishProduct}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* --- COMPARE NEARBY SHOPS MODAL --- */}
+          {comparingProduct && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl relative border border-slate-200 max-h-[90vh] overflow-y-auto">
+                <button 
+                  onClick={() => setComparingProduct(null)} 
+                  className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg font-bold">
+                  ✕
+                </button>
+
+                <div className="flex items-center gap-3 mb-4">
+                  <img src={comparingProduct.image} alt={comparingProduct.title} className="w-14 h-14 rounded-xl object-cover border" />
+                  <div>
+                    <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                      Hyperlocal Price Radar
+                    </span>
+                    <h2 className="font-extrabold text-base text-slate-900">{comparingProduct.title}</h2>
+                    <p className="text-xs text-slate-500">Live prices and delivery speeds across neighbouring stores</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {getComparisonShops(comparingProduct).map((item, idx) => {
+                    const isCheapest = idx === 0;
+                    return (
+                      <div 
+                        key={item.product.id}
+                        className={`p-4 rounded-2xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${isCheapest ? 'border-emerald-500 bg-emerald-50/50 shadow-sm' : 'border-slate-200 bg-white'}`}>
+                        
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-bold text-sm text-slate-900">{item.shop.name}</span>
+                            {isCheapest && (
+                              <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                Lowest Price
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-slate-500 flex items-center gap-3">
+                            <span>📍 {item.shop.distanceMeters}m away</span>
+                            <span>⚡ {item.shop.pickupTimeMins} mins pickup</span>
+                            <span>⭐ {item.shop.rating}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between sm:justify-end gap-4">
+                          <div className="text-right">
+                            <div className="text-lg font-extrabold text-slate-900">₹{item.product.price}</div>
+                            <div className="text-[10px] text-slate-400 line-through">MRP ₹{item.product.mrp}</div>
+                          </div>
+
+                          <button 
+                            onClick={() => {
+                              addToCart(item.product, item.shop);
+                              setComparingProduct(null);
+                            }}
+                            className="bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm">
+                            Select & Add
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* --- BUYER CART DRAWER --- */}
+          {isCartOpen && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-end">
+              <div className="bg-white w-full max-w-md h-full p-6 shadow-2xl flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🛒</span>
+                      <h2 className="font-extrabold text-base text-slate-900">{t.cartTitle}</h2>
+                    </div>
+                    <button 
+                      onClick={() => setIsCartOpen(false)}
+                      className="text-slate-400 hover:text-slate-600 text-lg font-bold">
+                      ✕
+                    </button>
+                  </div>
+
+                  {cart.length === 0 ? (
+                    <div className="py-20 text-center text-slate-400">
+                      <div className="text-4xl mb-2">🛍️</div>
+                      <p className="text-sm font-semibold">Your cart is empty.</p>
+                      <p className="text-xs">Browse local products and add items!</p>
+                    </div>
+                  ) : (
+                    <div className="py-4 space-y-3 max-h-[60vh] overflow-y-auto">
+                      {cart.map(item => (
+                        <div key={item.product.id} className="flex items-center justify-between gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                          <div className="flex-1">
+                            <h4 className="font-bold text-xs text-slate-900 line-clamp-1">{item.product.title}</h4>
+                            <p className="text-[11px] text-slate-500">🏪 {item.shop.name}</p>
+                            <p className="font-extrabold text-xs text-orange-600 mt-1">₹{item.product.price * item.qty}</p>
+                          </div>
+
+                          <div className="flex items-center gap-2 bg-white rounded-lg p-1 border border-slate-200 font-bold text-xs">
+                            <button onClick={() => updateCartQty(item.product.id, -1)} className="w-6 h-6 hover:bg-slate-100 rounded">-</button>
+                            <span className="w-5 text-center">{item.qty}</span>
+                            <button onClick={() => updateCartQty(item.product.id, 1)} className="w-6 h-6 hover:bg-slate-100 rounded">+</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {cart.length > 0 && (
+                  <div className="pt-4 border-t border-slate-200">
+                    <div className="flex justify-between text-sm font-extrabold text-slate-900 mb-4">
+                      <span>Total to Pay:</span>
+                      <span className="text-orange-600 text-lg">₹{cartTotal}</span>
+                    </div>
+
+                    <button 
+                      onClick={() => setIsCheckoutModalOpen(true)}
+                      className="w-full bg-orange-600 hover:bg-orange-700 text-white font-extrabold text-sm py-3 rounded-2xl shadow-lg transition flex items-center justify-center gap-2">
+                      <span>⚡</span>
+                      <span>{t.checkout}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* --- MOCK UPI CHECKOUT MODAL --- */}
+          {isCheckoutModalOpen && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative border border-slate-200">
+                <button 
+                  onClick={() => setIsCheckoutModalOpen(false)} 
+                  className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg font-bold">
+                  ✕
+                </button>
+
+                <div className="text-center mb-4">
+                  <div className="inline-block p-2 bg-orange-50 text-orange-600 rounded-2xl mb-1">
+                    <span className="text-2xl">📱</span>
+                  </div>
+                  <h3 className="font-extrabold text-lg text-slate-900">Instant UPI Payment</h3>
+                  <p className="text-xs text-slate-500">Scan QR code or click simulate to complete checkout</p>
+                </div>
+
+                {/* Delivery Option Toggle */}
+                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl mb-4 text-xs font-bold">
+                  <button 
+                    onClick={() => setDeliveryOption('pickup')}
+                    className={`py-2 rounded-lg transition ${deliveryOption === 'pickup' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-600'}`}>
+                    🏃 15-Min Pickup
+                  </button>
+                  <button 
+                    onClick={() => setDeliveryOption('delivery')}
+                    className={`py-2 rounded-lg transition ${deliveryOption === 'delivery' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-600'}`}>
+                    🛵 Local Delivery
+                  </button>
+                </div>
+
+                {/* Simulated UPI QR Code */}
+                <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-4 flex flex-col items-center justify-center mb-4">
+                  <div className="w-36 h-36 bg-white p-2 rounded-xl shadow-inner flex items-center justify-center border">
+                    {/* SVG Stylized QR code */}
+                    <svg className="w-full h-full text-slate-900" viewBox="0 0 100 100" fill="currentColor">
+                      <path d="M10 10h30v30H10zm6 6v18h18V16zm44-6h30v30H60zm6 6v18h18V16zM10 60h30v30H10zm6 6v18h18V66zm50-6h10v10H66zm14 0h10v10H80zm-14 14h10v16H66zm14 10h10v6H80zm-4-4h4v4h-4zm0-16h4v4h-4zm-20 4h10v10H56zm-10 0h6v6h-6zm0 10h6v6h-6zm10 0h6v6h-6z" />
+                    </svg>
+                  </div>
+                  <div className="font-extrabold text-base text-slate-900 mt-3">₹{cartTotal}</div>
+                  <div className="text-[11px] text-slate-400">UPI ID: bazaar.pay@okaxis</div>
+                </div>
+
+                {/* 1-Click Payment Confirmation */}
+                <button 
+                  onClick={handleExecuteUpiOrder}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm py-3 rounded-2xl transition shadow-lg flex items-center justify-center gap-2">
+                  <span>✓</span>
+                  <span>Simulate Instant UPI Payment (₹{cartTotal})</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* --- FLOATING TOAST NOTIFICATION --- */}
+          {toastMessage && (
+            <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2 border border-slate-800 animate-bounce">
+              <span>🔔</span>
+              <span>{toastMessage}</span>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    // Render the React application
+    ReactDOM.createRoot(document.getElementById('root')).render(<BazaarApp />);
+  </script>
+</body>
+</html>

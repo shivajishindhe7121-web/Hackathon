@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NearBazaar – Express Local Marketplace</title>
+<style>
+:root {
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --tx: #0f172a;
+  --mut: #64748b;
+  --pri: #f7c325;
+  --pri-dark: #d9a300;
+  --pri-tx: #1e1b04;
+  --acc: #10b981;
+  --bd: #e2e8f0;
+  --bad: #ef4444;
+  --navy: #0f172a;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #090d16;
+  --card: #111827;
+  --tx: #f3f4f6;
+  --mut: #9ca3af;
+  --pri: #f7c325;
+  --pri-dark: #eab308;
+  --pri-tx: #000000;
+  --acc: #10b981;
+  --bd: #1f2937;
+  --bad: #f87171;
+  --navy: #1e293b;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+body { margin: 0; background: var(--bg); color: var(--tx); font-size: 14px; line-height: 1.4; padding-bottom: 70px; }
+
+/* Fixed Navigation Header */
+header {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--navy); color: #fff;
+  padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+.logo-area { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.logo-bg { background: var(--pri); color: var(--pri-tx); font-weight: 900; font-size: 18px; padding: 4px 10px; border-radius: 8px; }
+.logo-text { font-size: 18px; font-weight: 800; tracking: -0.5px; }
+
+.loc-btn {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+  color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 12px;
+  display: flex; align-items: center; gap: 6px; cursor: pointer; max-width: 280px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.loc-btn:hover { background: rgba(255,255,255,0.2); }
+
+.header-actions { display: flex; align-items: center; gap: 10px; }
+.btn-icon { background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 50%; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.cart-badge-btn {
+  background: var(--pri); color: var(--pri-tx); border: none; padding: 8px 14px;
+  border-radius: 20px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px;
+}
+
+/* Service Ticker Banner */
+.ticker-banner {
+  background: linear-gradient(90deg, #10b981, #059669); color: #fff;
+  padding: 6px 16px; font-size: 12px; font-weight: 600; text-align: center;
+  display: flex; justify-content: center; align-items: center; gap: 10px;
+}
+
+/* Main Layout */
+main { max-width: 1200px; margin: 0 auto; padding: 16px; }
+
+/* Sub Header Controls */
+.sub-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; align-items: center; justify-content: space-between; }
+.search-box { flex: 1; min-width: 240px; position: relative; }
+.search-box input {
+  width: 100%; padding: 12px 16px 12px 40px; border-radius: 12px;
+  border: 1px solid var(--bd); background: var(--card); color: var(--tx); font-size: 14px;
+}
+.search-box .s-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); opacity: 0.5; }
+
+.seg-mode { display: flex; background: var(--bd); padding: 3px; border-radius: 10px; }
+.seg-mode button { border: none; padding: 6px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; background: transparent; color: var(--tx); }
+.seg-mode button.active { background: var(--card); color: var(--tx); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+
+/* Category Pills */
+.chips-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 16px; scrollbar-width: none; }
+.chip {
+  white-space: nowrap; padding: 8px 16px; border-radius: 20px; border: 1px solid var(--bd);
+  background: var(--card); color: var(--tx); font-weight: 600; cursor: pointer; transition: all 0.2s;
+}
+.chip.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+[data-theme="dark"] .chip.active { background: var(--pri); color: var(--pri-tx); border-color: var(--pri); }
+
+/* Store Selector horizontal list */
+.stores-row { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 20px; }
+.store-card {
+  min-width: 180px; padding: 12px; border-radius: 12px; border: 1px solid var(--bd);
+  background: var(--card); cursor: pointer; transition: transform 0.2s;
+}
+.store-card:hover { transform: translateY(-2px); }
+.store-card.active { border: 2px solid var(--pri); background: rgba(247, 195, 37, 0.08); }
+
+/* Product Grid */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+.p-card {
+  background: var(--card); border: 1px solid var(--bd); border-radius: 14px;
+  padding: 12px; display: flex; flex-direction: column; justify-content: space-between;
+  transition: transform 0.2s, box-shadow 0.2s; position: relative; overflow: hidden;
+}
+.p-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+.p-img-box { width: 100%; height: 130px; border-radius: 10px; overflow: hidden; margin-bottom: 8px; background: #f1f5f9; position: relative; }
+.p-img-box img { width: 100%; height: 100%; object-fit: cover; }
+.p-tag { position: absolute; top: 6px; left: 6px; background: var(--acc); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+.p-title { font-weight: 700; font-size: 14px; margin: 0 0 4px; color: var(--tx); line-height: 1.2; }
+.p-store { font-size: 11px; color: var(--mut); margin-bottom: 8px; }
+.p-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+.p-price { font-size: 15px; font-weight: 800; }
+.btn-add {
+  background: var(--card); border: 1px solid var(--acc); color: var(--acc);
+  font-weight: 700; padding: 6px 14px; border-radius: 8px; cursor: pointer; transition: all 0.2s;
+}
+.btn-add:hover { background: var(--acc); color: #fff; }
+
+/* Drawer Cart */
+.drawer-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200;
+  display: none; opacity: 0; transition: opacity 0.3s; backdrop-filter: blur(4px);
+}
+.drawer-overlay.active { display: block; opacity: 1; }
+.cart-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: 100%; max-width: 420px;
+  background: var(--card); z-index: 201; transform: translateX(100%); transition: transform 0.3s ease-in-out;
+  display: flex; flex-direction: column; box-shadow: -10px 0 30px rgba(0,0,0,0.2);
+}
+.cart-drawer.active { transform: translateX(0); }
+.drawer-header { padding: 16px; border-bottom: 1px solid var(--bd); display: flex; align-items: center; justify-content: space-between; background: var(--navy); color: #fff; }
+.drawer-body { flex: 1; overflow-y: auto; padding: 16px; }
+.drawer-footer { padding: 16px; border-top: 1px solid var(--bd); background: var(--card); }
+
+/* Login Modal Fullscreen */
+.login-wall {
+  position: fixed; inset: 0; background: var(--card); z-index: 300;
+  display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px;
+  overflow-y: auto;
+}
+.login-box { width: 100%; max-width: 440px; background: var(--card); border: 1px solid var(--bd); border-radius: 20px; padding: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+.form-group { margin-bottom: 14px; text-align: left; }
+.form-group label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 4px; color: var(--mut); text-transform: uppercase; }
+.form-group input, .form-group select {
+  width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--bd);
+  background: var(--bg); color: var(--tx); font-size: 14px;
+}
+.btn-main {
+  width: 100%; background: var(--pri); color: var(--pri-tx); border: none; padding: 12px;
+  border-radius: 10px; font-weight: 800; font-size: 15px; cursor: pointer; transition: filter 0.2s;
+}
+.btn-main:hover { filter: brightness(0.95); }
+
+/* Address confirmation prompt */
+.location-modal {
+  position: fixed; inset: 0; z-index: 350; display: none; align-items: center; justify-content: center;
+  padding: 16px; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);
+}
+.location-modal.active { display: flex; }
+.location-modal-box {
+  width: 100%; max-width: 440px; padding: 24px; border: 1px solid var(--bd);
+  border-radius: 16px; background: var(--card); box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+}
+.location-modal-box input {
+  width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--bd);
+  background: var(--bg); color: var(--tx); font-size: 14px;
+}
+
+/* Payment Modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 250;
+  display: none; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px);
+}
+.modal-overlay.active { display: flex; }
+.pay-box { background: var(--card); border-radius: 16px; width: 100%; max-width: 480px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+.pay-header { background: #0f172a; color: #fff; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
+.pay-nav { display: flex; background: var(--bg); border-bottom: 1px solid var(--bd); }
+.pay-tab { flex: 1; padding: 12px 8px; text-align: center; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; font-size: 13px; }
+.pay-tab.active { border-color: var(--pri); color: var(--pri-dark); background: var(--card); }
+
+/* Service Status Alert */
+.serv-alert {
+  padding: 10px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; margin-top: 10px; display: flex; align-items: center; gap: 8px;
+}
+.serv-alert.info { background: var(--bg); color: var(--mut); border: 1px solid var(--bd); }
+.serv-alert.ok { background: rgba(16, 185, 129, 0.15); color: #065f46; border: 1px solid #10b981; }
+.serv-alert.warn { background: rgba(239, 68, 68, 0.15); color: #991b1b; border: 1px solid #ef4444; }
+
+/* Toast */
+#toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: var(--navy); color: #fff; padding: 10px 20px; border-radius: 30px;
+  font-weight: 600; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 400;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- FULLSCREEN LOGIN WALL -->
+<div id="loginWall" class="login-wall">
+  <div class="login-box">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <span class="logo-bg">NearBazaar</span>
+      <h2 style="margin: 10px 0 4px; font-size: 22px;">Welcome to Local Express</h2>
+      <p style="color: var(--mut); margin:0; font-size: 13px;">Login to access express delivery in your city & villages</p>
+    </div>
+    
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="loginName" placeholder="Enter your full name" required>
+      </div>
+      <div class="form-group">
+        <label>Mobile Number</label>
+        <input type="tel" id="loginPhone" placeholder="Enter your mobile number" required>
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="loginEmail" placeholder="Enter your email address" required>
+      </div>
+      <div class="form-group">
+        <label>Select Role</label>
+        <select id="loginRole" onchange="updateLoginAddressRequirement()">
+          <option value="buyer">Buyer (Customer)</option>
+          <option value="seller">Seller (Shopkeeper)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label id="loginAddressLabel" for="loginAddress">Delivery Address / Village Name</label>
+        <input type="text" id="loginAddress" placeholder="House No, Village / Area, Landmark">
+      </div>
+      
+      <button type="button" class="btn-main" style="background: var(--bg); color: var(--tx); border: 1px solid var(--bd); margin-bottom: 12px;" onclick="trackLiveLocation()">
+        📍 Detect Live Location via GPS
+      </button>
+
+      <div id="locationStatus" class="serv-alert info">
+        Add your delivery address or detect your current location.
+      </div>
+
+      <button type="submit" class="btn-main" style="margin-top: 14px;">Enter App & Start Shopping</button>
+    </form>
+  </div>
+</div>
+
+<div id="locationPrompt" class="location-modal" role="dialog" aria-modal="true" aria-labelledby="locationPromptTitle" aria-hidden="true">
+  <div class="location-modal-box">
+    <h2 id="locationPromptTitle" style="margin: 0 0 8px;">Please confirm your delivery location</h2>
+    <p style="color: var(--mut); margin: 0 0 16px;">That address looks incomplete. Detect your current position or enter a fuller address with your area or village.</p>
+    <button type="button" class="btn-main" style="margin-bottom: 12px;" onclick="trackLiveLocation()">
+      📍 Detect Live Location
+    </button>
+    <div id="promptLocationStatus" class="serv-alert" role="status" aria-live="polite" style="display: none;"></div>
+    <label for="manualLocationAddress" style="display: block; margin: 12px 0 4px; font-size: 12px; font-weight: 700; color: var(--mut); text-transform: uppercase;">Enter your address manually</label>
+    <input type="text" id="manualLocationAddress" placeholder="House No, Street, Area / Village" onkeydown="if (event.key === 'Enter') { event.preventDefault(); confirmManualAddress(); }">
+    <div id="manualAddressError" class="serv-alert warn" role="alert" style="display: none;"></div>
+    <button type="button" class="btn-main" style="margin-top: 14px;" onclick="confirmManualAddress()">Use this address</button>
+  </div>
+</div>
+
+<!-- HEADER NAVIGATION -->
+<header>
+  <div class="logo-area" onclick="openLoginModal()">
+    <span class="logo-bg">NearBazaar</span>
+    <span class="logo-text">Express</span>
+  </div>
+
+  <div class="loc-btn" onclick="openLoginModal()">
+    <span>📍</span>
+    <span id="headerLocText">Set your delivery location</span>
+    <small>▼</small>
+  </div>
+
+  <div class="header-actions">
+    <button class="btn-icon" title="Toggle Theme" onclick="toggleTheme()">🌓</button>
+    <button class="cart-badge-btn" onclick="toggleCart()">
+      🧺 Cart (<span id="cartCount">0</span>)
+    </button>
+  </div>
+</header>
+
+<!-- SERVICE TICKER -->
+<div class="ticker-banner">
+  ⚡ Superfast delivery within 8-15 minutes across City limits & nearby Villages!
+</div>
+
+<!-- MAIN APPLICATION -->
+<main id="appMain">
+  <div class="sub-bar">
+    <div class="search-box">
+      <span class="s-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="Search milk, dal, chargers, paneer, bread..." oninput="handleSearch()">
+    </div>
+    
+    <div class="seg-mode">
+      <button id="btnBuyerMode" class="active" onclick="switchRole('buyer')">🛍️ Customer</button>
+      <button id="btnSellerMode" onclick="switchRole('seller')">🏪 Shop Seller</button>
+    </div>
+  </div>
+
+  <!-- SHOP SELECTOR -->
+  <div style="margin-bottom: 8px; font-size: 13px; font-weight: 700; color: var(--mut);">EXPLORE NEARBY STORES</div>
+  <div class="stores-row" id="storesContainer"></div>
+
+  <!-- CATEGORY FILTERS -->
+  <div class="chips-row" id="chipsContainer"></div>
+
+  <!-- PRODUCT GRID -->
+  <div class="grid" id="productsGrid"></div>
+  
+  <!-- SELLER DASHBOARD PANEL (HIDDEN BY DEFAULT) -->
+  <div id="sellerPanel" style="display: none; margin-top: 20px;"></div>
+</main>
+
+<!-- SLIDE-OVER CART DRAWER -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="toggleCart()"></div>
+<div class="cart-drawer" id="cartDrawer">
+  <div class="drawer-header">
+    <h3 style="margin: 0; font-size: 16px;">Your Delivery Basket</h3>
+    <button class="btn-icon" onclick="toggleCart()">✕</button>
+  </div>
+  <div class="drawer-body" id="cartItemsContainer"></div>
+  <div class="drawer-footer" id="cartFooter"></div>
+</div>
+
+<!-- IN-APP PAYMENT GATEWAY MODAL -->
+<div class="modal-overlay" id="payModal">
+  <div class="pay-box">
+    <div class="pay-header">
+      <div>
+        <div style="font-size: 11px; opacity: 0.8; font-weight: 700;">RAZORPAY SECURE GATEWAY</div>
+        <div style="font-size: 18px; font-weight: 800;" id="payAmount">₹0</div>
+      </div>
+      <button class="btn-icon" onclick="closePayModal()">✕</button>
+    </div>
+    <div class="pay-nav">
+      <div class="pay-tab active" onclick="switchPayTab('upi')">UPI / QR</div>
+      <div class="pay-tab" onclick="switchPayTab('card')">Card</div>
+      <div class="pay-tab" onclick="switchPayTab('cod')">Cash on Delivery</div>
+    </div>
+    <div style="padding: 20px;" id="payTabContent"></div>
+  </div>
+</div>
+
+<!-- TOAST NOTIFICATION -->
+<div id="toast"></div>
+
+<script>
+// --- GLOBAL STATE ---
+let currentUser = {
+  name: "",
+  phone: "",
+  email: "",
+  role: "buyer",
+  address: "",
+  serviceable: true
+};
+
+let currentCategory = "All";
+let currentStoreFilter = "All";
+let currentRole = "buyer";
+let cart = {};
+
+// --- STORES DATA ---
+const stores = [
+  { id: 's1', name: 'Lakshmi Kirana Store', km: 0.4, rating: 4.8 },
+  { id: 's2', name: 'Fresh Basket Supermarket', km: 1.1, rating: 4.5 },
+  { id: 's3', name: 'Sai Hot Bakery', km: 0.8, rating: 4.9 },
+  { id: 's4', name: 'Gadget Corner Electronics', km: 1.8, rating: 4.3 },
+  { id: 's5', name: 'Artisan Village Handicrafts', km: 2.3, rating: 4.7 }
+];
+
+// --- PRODUCTS DATA WITH ACCURATE IMAGE MAPPINGS ---
+let products = [
+  // Gadgets & Electronics
+  { id: 'p1', store: 's4', name: '20W Fast Charger Block', cat: 'Electronics', price: 299, stock: 15, tag: 'Bestseller', img: 'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=500&auto=format&fit=crop&q=80' },
+  { id: 'p2', store: 's4', name: 'Wireless Studio Headphones', cat: 'Electronics', price: 1299, stock: 8, tag: 'Top Rated', img: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=80' },
+  { id: 'p3', store: 's4', name: '10000mAh Power Bank', cat: 'Electronics', price: 899, stock: 10, tag: 'Fast Charging', img: 'https://images.unsplash.com/photo-1609592424109-dd9892f1b177?w=500&auto=format&fit=crop&q=80' },
+  
+  // Bakery & Fresh Food
+  { id: 'p4', store: 's3', name: 'Fresh Sandwich Loaf', cat: 'Bakery', price: 40, stock: 20, tag: 'Baked Today', img: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500&auto=format&fit=crop&q=80' },
+  { id: 'p5', store: 's3', name: 'Veg Grilled Sandwich', cat: 'Bakery', price: 65, stock: 12, tag: 'Hot Delivery', img: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=500&auto=format&fit=crop&q=80' },
+  { id: 'p6', store: 's3', name: 'Paneer Kathi Roll', cat: 'Bakery', price: 90, stock: 15, tag: 'Chef Choice', img: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?w=500&auto=format&fit=crop&q=80' },
+
+  // Kirana & Groceries
+  { id: 'p7', store: 's1', name: 'Unpolished Toor Dal 1kg', cat: 'Kirana', price: 145, stock: 30, tag: 'Protein Rich', img: 'https://images.unsplash.com/photo-1585993000285-d6d744b82d02?w=500&auto=format&fit=crop&q=80' },
+  { id: 'p8', store: 's1', name: 'Aashirvaad Atta 5kg', cat: 'Kirana', price: 230, stock: 25, tag: 'Whole Wheat', img: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=500&auto=format&fit=crop&q=80' },
+  { id: 'p9', store: 's1', name: 'Fortune Sunflower Oil 1L', cat: 'Kirana', price: 135, stock: 18, tag: 'Pure', img: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=500&auto=format&fit=crop&q=80' },
+
+  // Local Handicrafts
+  { id: 'p10', store: 's5', name: 'Wooden Carved Elephant', cat: 'Handicrafts', price: 499, stock: 5, tag: 'Handmade', img: 'https://images.unsplash.com/photo-1567225557594-88d73e55f2cb?w=500&auto=format&fit=crop&q=80' },
+  { id: 'p11', store: 's5', name: 'Artisan Ceramic Glazed Mug', cat: 'Handicrafts', price: 240, stock: 14, tag: 'Local Craft', img: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500&auto=format&fit=crop&q=80' },
+
+  // Everyday essentials and fresh produce
+  { id: 'p12', store: 's2', name: 'Fresh Toned Milk 500ml', cat: 'Kirana', price: 28, stock: 40, tag: 'Daily Essential', img: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=500&auto=format&fit=crop&q=80' },
+  { id: 'p13', store: 's2', name: 'Farm Fresh Tomatoes 1kg', cat: 'Kirana', price: 30, stock: 35, tag: 'Fresh Produce', img: 'https://images.unsplash.com/photo-1546094096-0df4bcaaa337?w=500&auto=format&fit=crop&q=80' },
+  { id: 'p14', store: 's2', name: 'Yelakki Bananas (Dozen)', cat: 'Kirana', price: 60, stock: 20, tag: 'Ripe & Fresh', img: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=500&auto=format&fit=crop&q=80' },
+  { id: 'p15', store: 's1', name: 'Basmati Rice 1kg', cat: 'Kirana', price: 95, stock: 24, tag: 'Long Grain', img: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=500&auto=format&fit=crop&q=80' },
+  { id: 'p16', store: 's3', name: 'Butter Cookies 250g', cat: 'Bakery', price: 120, stock: 16, tag: 'Freshly Baked', img: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=500&auto=format&fit=crop&q=80' },
+  { id: 'p17', store: 's4', name: 'Wired Earphones with Mic', cat: 'Electronics', price: 399, stock: 9, tag: 'Clear Sound', img: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500&auto=format&fit=crop&q=80' }
+];
+
+const categories = ['All', 'Kirana', 'Bakery', 'Electronics', 'Handicrafts'];
+
+// --- INITIALIZATION ---
+window.onload = () => {
+  renderStores();
+  renderChips();
+  renderProducts();
+};
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function toggleTheme() {
+  const current = document.body.getAttribute('data-theme');
+  document.body.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+}
+
+// --- USER & LOGIN MANAGEMENT ---
+function openLoginModal() {
+  document.getElementById('loginWall').style.display = 'flex';
+}
+
+function updateLoginAddressRequirement() {
+  const isBuyer = document.getElementById('loginRole').value === 'buyer';
+  const address = document.getElementById('loginAddress');
+  const label = document.getElementById('loginAddressLabel');
+  address.required = false;
+  label.textContent = isBuyer
+    ? 'Delivery Address / Village Name'
+    : 'Delivery Address / Village Name (Optional)';
+}
+
+function isAddressComplete(address) {
+  return address.trim().length >= 10;
+}
+
+function showLocationPrompt() {
+  const prompt = document.getElementById('locationPrompt');
+  document.getElementById('manualLocationAddress').value =
+    document.getElementById('loginAddress').value.trim();
+  document.getElementById('manualAddressError').style.display = 'none';
+  prompt.classList.add('active');
+  prompt.setAttribute('aria-hidden', 'false');
+  document.getElementById('manualLocationAddress').focus();
+}
+
+function confirmManualAddress() {
+  const addressInput = document.getElementById('manualLocationAddress');
+  const address = addressInput.value.trim();
+  const error = document.getElementById('manualAddressError');
+
+  if (!isAddressComplete(address)) {
+    error.textContent = 'Please enter a fuller address (at least 10 characters) including your area or village.';
+    error.style.display = 'flex';
+    addressInput.focus();
+    return;
+  }
+
+  document.getElementById('loginAddress').value = address;
+  const prompt = document.getElementById('locationPrompt');
+  prompt.classList.remove('active');
+  prompt.setAttribute('aria-hidden', 'true');
+  document.getElementById('loginForm').requestSubmit();
+}
+
+function trackLiveLocation() {
+  const status = document.getElementById('locationStatus');
+  const promptStatus = document.getElementById('promptLocationStatus');
+  const setStatus = (message, isError) => {
+    status.textContent = message;
+    status.className = `serv-alert ${isError ? 'warn' : 'ok'}`;
+    promptStatus.textContent = message;
+    promptStatus.className = `serv-alert ${isError ? 'warn' : 'ok'}`;
+    promptStatus.style.display = 'flex';
+  };
+
+  setStatus('⌛ Requesting permission to detect your current location...', false);
+
+  if (!navigator.geolocation) {
+    setStatus('Location detection is not supported by this browser. Please enter your address manually.', true);
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition((pos) => {
+    const latitude = pos.coords.latitude.toFixed(5);
+    const longitude = pos.coords.longitude.toFixed(5);
+    setStatus(`✓ Live location detected (${latitude}, ${longitude}). Enter your street, area, or village below to complete the address.`, false);
+  }, (err) => {
+    const message = err.code === err.PERMISSION_DENIED
+      ? 'Location permission was denied. Allow location access or enter your address manually.'
+      : err.code === err.TIMEOUT
+        ? 'Location detection timed out. Try again or enter your address manually.'
+        : 'Could not detect your location. Check your device settings or enter your address manually.';
+    setStatus(message, true);
+  }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+}
+
+function handleLogin(e) {
+  e.preventDefault();
+  const address = document.getElementById('loginAddress').value.trim();
+  const role = document.getElementById('loginRole').value;
+  if ((role === 'buyer' || address) && !isAddressComplete(address)) {
+    showLocationPrompt();
+    return;
+  }
+
+  currentUser.name = document.getElementById('loginName').value.trim();
+  currentUser.phone = document.getElementById('loginPhone').value.trim();
+  currentUser.email = document.getElementById('loginEmail').value.trim();
+  currentUser.role = role;
+  currentUser.address = address;
+
+  document.getElementById('headerLocText').textContent =
+    currentUser.address || 'Address not provided';
+  document.getElementById('loginWall').style.display = 'none';
+
+  switchRole(currentUser.role);
+  toast(`Welcome back, ${currentUser.name}!`);
+}
+
+function switchRole(role) {
+  currentRole = role;
+  document.getElementById('btnBuyerMode').classList.toggle('active', role === 'buyer');
+  document.getElementById('btnSellerMode').classList.toggle('active', role === 'seller');
+
+  if (role === 'seller') {
+    document.getElementById('productsGrid').style.display = 'none';
+    document.getElementById('sellerPanel').style.display = 'block';
+    renderSellerPanel();
+  } else {
+    document.getElementById('productsGrid').style.display = 'grid';
+    document.getElementById('sellerPanel').style.display = 'none';
+    renderProducts();
+  }
+}
+
+// --- RENDER FUNCTIONS ---
+function renderStores() {
+  const container = document.getElementById('storesContainer');
+  let html = `<div class="store-card ${currentStoreFilter==='All'?'active':''}" onclick="filterByStore('All')">
+    <b>🏪 All Stores</b>
+    <div style="font-size: 11px; color: var(--mut);">Near You</div>
+  </div>`;
+
+  stores.forEach(s => {
+    html += `<div class="store-card ${currentStoreFilter===s.id?'active':''}" onclick="filterByStore('${s.id}')">
+      <b>${s.name}</b>
+      <div style="font-size: 11px; color: var(--mut);">${s.km} km · ⭐${s.rating}</div>
+    </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function filterByStore(id) {
+  currentStoreFilter = id;
+  renderStores();
+  renderProducts();
+}
+
+function renderChips() {
+  const container = document.getElementById('chipsContainer');
+  container.innerHTML = categories.map(c => 
+    `<div class="chip ${currentCategory===c?'active':''}" onclick="filterCategory('${c}')">${c}</div>`
+  ).join('');
+}
+
+function filterCategory(c) {
+  currentCategory = c;
+  renderChips();
+  renderProducts();
+}
+
+function renderProducts() {
+  const grid = document.getElementById('productsGrid');
+  const q = document.getElementById('searchInput').value.toLowerCase();
+
+  let filtered = products.filter(p => {
+    const matchCat = currentCategory === 'All' || p.cat === currentCategory;
+    const matchStore = currentStoreFilter === 'All' || p.store === currentStoreFilter;
+    const matchSearch = p.name.toLowerCase().includes(q) || p.cat.toLowerCase().includes(q);
+    return matchCat && matchStore && matchSearch;
+  });
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--mut);">
+      🔍 No matching products found in nearby shops.
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(p => {
+    const storeObj = stores.find(s => s.id === p.store);
+    return `
+      <div class="p-card">
+        <div class="p-img-box">
+          <img src="${p.img}" alt="${p.name}">
+          <span class="p-tag">${p.tag}</span>
+        </div>
+        <div class="p-title">${p.name}</div>
+        <div class="p-store">${storeObj ? storeObj.name : ''} · ${storeObj ? storeObj.km : ''} km</div>
+        <div class="p-footer">
+          <span class="p-price">₹${p.price}</span>
+          <button class="btn-add" onclick="addToCart('${p.id}')">+ ADD</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function handleSearch() {
+  renderProducts();
+}
+
+// --- CART & DRAWER MANAGEMENT ---
+function addToCart(id) {
+  cart[id] = (cart[id] || 0) + 1;
+  updateCartUI();
+  toast("Item added to basket 🧺");
+}
+
+function changeQty(id, delta) {
+  if (cart[id]) {
+    cart[id] += delta;
+    if (cart[id] <= 0) delete cart[id];
+  }
+  updateCartUI();
+}
+
+function updateCartUI() {
+  const totalCount = Object.values(cart).reduce((a, b) => a + b, 0);
+  document.getElementById('cartCount').textContent = totalCount;
+
+  const container = document.getElementById('cartItemsContainer');
+  const footer = document.getElementById('cartFooter');
+
+  if (totalCount === 0) {
+    container.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--mut);">
+      🧺 Your basket is empty.<br>Start adding products from local stores!
+    </div>`;
+    footer.innerHTML = '';
+    return;
+  }
+
+  let subtotal = 0;
+  let itemsHtml = Object.entries(cart).map(([id, qty]) => {
+    const p = products.find(prod => prod.id === id);
+    const itemTotal = p.price * qty;
+    subtotal += itemTotal;
+    return `
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--bd);">
+        <div>
+          <div style="font-weight: 700;">${p.name}</div>
+          <div style="font-size: 12px; color: var(--mut);">₹${p.price} x ${qty} = ₹${itemTotal}</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button style="padding: 2px 8px; border-radius: 4px;" onclick="changeQty('${id}', -1)">-</button>
+          <span>${qty}</span>
+          <button style="padding: 2px 8px; border-radius: 4px;" onclick="changeQty('${id}', 1)">+</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const deliveryFee = subtotal > 299 ? 0 : 25;
+  const grandTotal = subtotal + deliveryFee;
+
+  container.innerHTML = `
+    <div style="margin-bottom: 12px; font-weight: 700;">Items in Basket</div>
+    ${itemsHtml}
+    <div style="margin-top: 20px; font-size: 13px;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>Item Subtotal</span><span>₹${subtotal}</span></div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>Express Delivery</span><span>${deliveryFee === 0 ? '<span style="color:var(--acc);">FREE</span>' : '₹' + deliveryFee}</span></div>
+      <hr style="border-color: var(--bd); margin: 8px 0;">
+      <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 16px;"><span>To Pay</span><span>₹${grandTotal}</span></div>
+    </div>
+  `;
+
+  footer.innerHTML = `
+    <button class="btn-main" onclick="openPayModal(${grandTotal})">Proceed to Checkout (₹${grandTotal})</button>
+  `;
+}
+
+function toggleCart() {
+  const overlay = document.getElementById('drawerOverlay');
+  const drawer = document.getElementById('cartDrawer');
+  overlay.classList.toggle('active');
+  drawer.classList.toggle('active');
+  updateCartUI();
+}
+
+// --- PAYMENT MODAL INTEGRATION ---
+let checkoutTotal = 0;
+
+function openPayModal(amt) {
+  checkoutTotal = amt;
+  document.getElementById('payAmount').textContent = `₹${amt}`;
+  document.getElementById('payModal').classList.add('active');
+  switchPayTab('upi');
+}
+
+function closePayModal() {
+  document.getElementById('payModal').classList.remove('active');
+}
+
+function switchPayTab(type) {
+  const tabs = document.querySelectorAll('.pay-tab');
+  tabs.forEach(t => t.classList.remove('active'));
+  
+  const content = document.getElementById('payTabContent');
+
+  if (type === 'upi') {
+    content.innerHTML = `
+      <div style="text-align: center;">
+        <p style="font-size: 13px; color: var(--mut);">Scan & Pay using Google Pay, PhonePe, or Paytm</p>
+        <div style="background: #fff; padding: 12px; display: inline-block; border-radius: 12px; border: 1px solid #ccc; margin: 10px 0;">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=nearbazaar@upi&pn=NearBazaar" alt="QR Code">
+        </div>
+        <button class="btn-main" onclick="completeOrder()">I Have Completed Payment</button>
+      </div>
+    `;
+  } else if (type === 'card') {
+    content.innerHTML = `
+      <div>
+        <div class="form-group"><label>Card Number</label><input type="text" placeholder="4532 •••• •••• 8921"></div>
+        <div style="display: flex; gap: 10px;">
+          <div class="form-group" style="flex:1;"><label>Expiry</label><input type="text" placeholder="MM/YY"></div>
+          <div class="form-group" style="flex:1;"><label>CVV</label><input type="password" placeholder="•••"></div>
+        </div>
+        <button class="btn-main" onclick="completeOrder()">Pay ₹${checkoutTotal}</button>
+      </div>
+    `;
+  } else {
+    content.innerHTML = `
+      <div style="text-align: center; padding: 10px 0;">
+        <p>Pay cash or via UPI QR code directly to the delivery partner upon arrival.</p>
+        <button class="btn-main" onclick="completeOrder()">Confirm Cash Order</button>
+      </div>
+    `;
+  }
+}
+
+function completeOrder() {
+  closePayModal();
+  toggleCart();
+  cart = {};
+  updateCartUI();
+  toast("🎉 Order Placed Successfully! Express delivery started.");
+}
+
+// --- SELLER DASHBOARD ---
+function renderSellerPanel() {
+  const panel = document.getElementById('sellerPanel');
+  panel.innerHTML = `
+    <div style="background: var(--card); border: 1px solid var(--bd); border-radius: 16px; padding: 20px;">
+      <h2>🏪 Merchant Operations Dashboard</h2>
+      <p style="color: var(--mut);">Manage store inventory, process express orders, and list new items.</p>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 20px 0;">
+        <div style="background: var(--bg); padding: 14px; border-radius: 12px; border: 1px solid var(--bd);">
+          <small style="color: var(--mut);">Today's Revenue</small>
+          <div style="font-size: 20px; font-weight: 800;">₹3,420</div>
+        </div>
+        <div style="background: var(--bg); padding: 14px; border-radius: 12px; border: 1px solid var(--bd);">
+          <small style="color: var(--mut);">Active Orders</small>
+          <div style="font-size: 20px; font-weight: 800;">4 Orders</div>
+        </div>
+      </div>
+
+      <button class="btn-main" onclick="toast('Product catalog management ready.')">➕ Add New Item to Shop Catalog</button>
+    </div>
+  `;
+}
+</script>
+</body>
+</html>

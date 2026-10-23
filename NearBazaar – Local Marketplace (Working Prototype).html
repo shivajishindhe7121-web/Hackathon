@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NearBazaar – Local Marketplace</title>
+<style>
+:root{--bg:#f4f7fa;--card:#fff;--tx:#0f2a47;--mut:#5b6b7e;--pri:#0d9488;--acc:#d97706;--bd:#dde4ec;--bad:#dc2626;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1b2e;--card:#12294400;--card:#132a45;--tx:#e8eef5;--mut:#9fb0c3;--pri:#2dd4bf;--acc:#fbbf24;--bd:#24405f;--bad:#f87171;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0b1b2e;--card:#132a45;--tx:#e8eef5;--mut:#9fb0c3;--pri:#2dd4bf;--acc:#fbbf24;--bd:#24405f;--bad:#f87171;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--bd);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+h1{font-size:20px;margin:0;flex:1}h1 span{color:var(--pri)}
+.seg button,.btn{border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:8px 14px;border-radius:8px;cursor:pointer;font:inherit}
+.seg button.on,.btn.pri{background:var(--pri);color:#04201d;border-color:var(--pri);font-weight:600}
+.btn.sm{padding:4px 10px;font-size:13px}.btn.acc{background:var(--acc);color:#2a1700;border-color:var(--acc);font-weight:600}
+main{max-width:1100px;margin:0 auto;padding:16px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+input,select,textarea{background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;font:inherit;min-width:0}
+.bar input{flex:1;min-width:160px}
+.layout{display:grid;grid-template-columns:1fr 320px;gap:16px}@media(max-width:820px){.layout{grid-template-columns:1fr}}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px}
+.p .em{font-size:34px}.p h3{margin:4px 0 2px;font-size:15px}.mut{color:var(--mut);font-size:13px}
+.price{font-weight:700;font-size:17px}.low{color:var(--bad);font-weight:600}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+h2{font-size:16px;margin:0 0 8px}.sec{margin-top:16px}
+.tag{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;background:var(--bd);color:var(--tx)}
+.best{background:var(--pri);color:#04201d;font-weight:700}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--bd);font-size:14px}
+.scroll{overflow-x:auto}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+.kpi b{display:block;font-size:24px}
+.bars div.b{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:13px}
+.bars i{display:block;height:14px;background:var(--pri);border-radius:4px;min-width:3px}
+.tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.tip{border-left:4px solid var(--acc);background:var(--card);padding:10px 12px;border-radius:8px;border:1px solid var(--bd);border-left-width:4px}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:8px;opacity:0;transition:.25s;pointer-events:none;z-index:9}
+#toast.show{opacity:1}
+</style></head><body>
+<header><h1>Near<span>Bazaar</span> <span class="mut" style="font-weight:400;font-size:13px">your neighbourhood, online</span></h1>
+<div class="seg"><button id="vb" class="on" data-a="view" data-v="buyer">🛍 Buyer</button> <button id="vs" data-a="view" data-v="seller">🏪 Seller</button></div></header>
+<main id="app"></main><div id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const EM={Grocery:'🛒',Dairy:'🥛',Bakery:'🥐',Produce:'🥬',Electronics:'🔌'};
+const CATS=Object.keys(EM);
+const shops=[{id:'s1',name:'Lakshmi Kirana',km:0.4,r:4.6},{id:'s2',name:'Fresh Basket',km:1.2,r:4.3},{id:'s3',name:'Sai Bakery',km:0.8,r:4.8},{id:'s4',name:'Gadget Corner',km:2.1,r:4.1}];
+let nid=100;
+const mk=(shop,name,cat,price,stock,desc)=>({id:'p'+(nid++),shop,name,cat,price,stock,desc});
+let prods=[mk('s1','Basmati Rice 1kg','Grocery',95,40,'Long-grain aged rice'),mk('s2','Basmati Rice 1kg','Grocery',102,25,'Long-grain aged rice'),
+mk('s1','Toor Dal 1kg','Grocery',140,18,'Protein-rich split pigeon peas'),mk('s2','Toor Dal 1kg','Grocery',135,30,'Protein-rich split pigeon peas'),
+mk('s1','Milk 500ml','Dairy',28,4,'Fresh toned milk'),mk('s2','Milk 500ml','Dairy',27,50,'Fresh toned milk'),
+mk('s3','Bread Loaf','Bakery',40,12,'Baked this morning'),mk('s1','Bread Loaf','Bakery',42,3,'Soft sandwich bread'),
+mk('s3','Butter Cookies','Bakery',120,20,'Crisp homemade cookies'),mk('s3','Veg Puff','Bakery',25,15,'Hot, flaky, filled with veggies'),
+mk('s2','Tomato 1kg','Produce',30,60,'Farm-fresh tomatoes'),mk('s2','Banana Dozen','Produce',60,35,'Ripe yelakki bananas'),
+mk('s4','Phone Charger 20W','Electronics',299,22,'Fast charging adapter'),mk('s4','Earphones','Electronics',399,9,'Wired with mic'),mk('s4','Power Bank 10000mAh','Electronics',999,6,'Dual USB output')];
+const pid=(n,s)=>prods.find(p=>p.name===n&&p.shop===s).id;
+let orders=[];let oid=1000;
+function seed(shop,items,st){orders.push({id:'#'+(oid++),shop,cust:'Neighbour',items:items.map(([n,q])=>({p:pid(n,shop),q})),status:st||'Delivered'})}
+seed('s1',[['Basmati Rice 1kg',2],['Toor Dal 1kg',1],['Milk 500ml',3]]);seed('s1',[['Milk 500ml',4],['Bread Loaf',2]]);
+seed('s1',[['Toor Dal 1kg',2],['Basmati Rice 1kg',1]]);seed('s2',[['Tomato 1kg',3],['Banana Dozen',1],['Milk 500ml',2]]);
+seed('s3',[['Bread Loaf',3],['Butter Cookies',1],['Veg Puff',4]]);seed('s4',[['Phone Charger 20W',1],['Earphones',1]]);
+let S={view:'buyer',q:'',cat:'All',sort:'dist',cart:{},cmp:[],shop:'s1',tab:'dash'};
+const shopOf=id=>shops.find(s=>s.id===id),prodOf=id=>prods.find(p=>p.id===id);
+const inr=n=>'₹'+Math.round(n).toLocaleString('en-IN');
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),2200)}
+const total=o=>o.items.reduce((a,i)=>a+prodOf(i.p).price*i.q,0);
+const sold=()=>{const m={};orders.filter(o=>o.status!=='Cancelled').forEach(o=>o.items.forEach(i=>m[i.p]=(m[i.p]||0)+i.q));return m};
+
+/* ---------- BUYER ---------- */
+function buyer(){
+ $('#app').innerHTML=`<div class="bar"><input id="q" placeholder="Search rice, bread, charger…" value="${esc(S.q)}"><button class="btn" data-a="mic" title="Voice search">🎤</button>
+ <select id="cat"><option>All</option>${CATS.map(c=>`<option${S.cat===c?' selected':''}>${c}</option>`).join('')}</select>
+ <select id="sort"><option value="dist">Nearest first</option><option value="price">Lowest price</option><option value="rate">Top rated</option></select></div>
+ <div class="layout"><div><div id="grid" class="grid"></div><div id="cmp"></div><div id="rec"></div></div><aside><div class="card" id="cart"></div><div class="card sec" id="my"></div></aside></div>`;
+ $('#sort').value=S.sort;refreshBuyer();
+}
+function refreshBuyer(){
+ const q=S.q.toLowerCase();
+ let L=prods.filter(p=>(S.cat==='All'||p.cat===S.cat)&&(!q||(p.name+p.cat+shopOf(p.shop).name).toLowerCase().includes(q)));
+ L.sort((a,b)=>S.sort==='price'?a.price-b.price:S.sort==='rate'?shopOf(b.shop).r-shopOf(a.shop).r:shopOf(a.shop).km-shopOf(b.shop).km);
+ $('#grid').innerHTML=L.map(p=>{const s=shopOf(p.shop);return `<div class="card p"><div class="em">${p.img||EM[p.cat]}</div><h3>${esc(p.name)}</h3>
+ <div class="mut">${esc(s.name)} · ${s.km} km · ⭐${s.r}</div><div class="row" style="margin:6px 0"><span class="price">${inr(p.price)}</span>
+ <span class="${p.stock<=5?'low':'mut'}">${p.stock?(p.stock<=5?'Only '+p.stock+' left':p.stock+' in stock'):'Sold out'}</span></div>
+ <div class="row"><button class="btn sm pri" data-a="add" data-id="${p.id}" ${p.stock?'':'disabled'}>Add to cart</button>
+ <button class="btn sm" data-a="cmp" data-n="${esc(p.name)}">${S.cmp.includes(p.name)?'✓ ':''}Compare</button></div></div>`}).join('')||'<p class="mut">No products match your search.</p>';
+ // compare
+ $('#cmp').innerHTML=S.cmp.length?`<div class="sec"><h2>⚖ Compare nearby shops</h2>`+S.cmp.map(n=>{
+  const rows=prods.filter(p=>p.name===n);const min=Math.min(...rows.map(r=>r.price));
+  return `<div class="card scroll" style="margin-bottom:8px"><b>${esc(n)}</b><table><tr><th>Shop</th><th>Price</th><th>Distance</th><th>Rating</th><th>Stock</th><th></th></tr>`+
+  rows.map(r=>{const s=shopOf(r.shop);return `<tr><td>${esc(s.name)}</td><td>${inr(r.price)} ${r.price===min&&rows.length>1?'<span class="tag best">Cheapest</span>':''}</td><td>${s.km} km</td><td>⭐${s.r}</td><td>${r.stock}</td><td><button class="btn sm" data-a="add" data-id="${r.id}">Add</button></td></tr>`}).join('')+`</table></div>`}).join('')+`</div>`:'';
+ // recommendations
+ const sm=sold();const trend=prods.filter(p=>p.stock&&sm[p.id]).sort((a,b)=>sm[b.id]-sm[a.id]).slice(0,4);
+ const inCart=Object.keys(S.cart);const co={};
+ orders.forEach(o=>{const ids=o.items.map(i=>i.p);ids.forEach(a=>{if(inCart.includes(a))ids.forEach(b=>{if(!inCart.includes(b))co[b]=(co[b]||0)+1})})});
+ const pairs=Object.keys(co).sort((a,b)=>co[b]-co[a]).slice(0,3).map(prodOf).filter(p=>p.stock);
+ const chip=p=>`<button class="btn sm" data-a="add" data-id="${p.id}">${p.img||EM[p.cat]} ${esc(p.name)} · ${inr(p.price)} +</button>`;
+ $('#rec').innerHTML=`<div class="sec"><h2>🔥 Trending in your area</h2><div class="bar">${trend.map(chip).join('')}</div>`+
+  (pairs.length?`<h2>🤝 Customers who bought these also bought</h2><div class="bar">${pairs.map(chip).join('')}</div>`:'')+`</div>`;
+ // cart
+ const lines=Object.entries(S.cart).map(([id,q])=>({p:prodOf(id),q}));const tot=lines.reduce((a,l)=>a+l.p.price*l.q,0);
+ $('#cart').innerHTML=`<h2>🧺 Your cart</h2>`+(lines.length?lines.map(l=>`<div class="row" style="margin:4px 0"><span>${esc(l.p.name)}<br><span class="mut">${esc(shopOf(l.p.shop).name)}</span></span>
+  <span><button class="btn sm" data-a="dec" data-id="${l.p.id}">−</button> ${l.q} <button class="btn sm" data-a="add" data-id="${l.p.id}">+</button></span></div>`).join('')+
+  `<hr style="border-color:var(--bd)"><div class="row"><b>Total</b><b>${inr(tot)}</b></div><select id="pay" style="width:100%;margin:8px 0"><option>UPI</option><option>Cash on delivery</option></select>
+  <button class="btn pri" style="width:100%" data-a="order">Place order</button>`:'<p class="mut">Cart is empty. Add items from nearby shops.</p>');
+ const mine=orders.filter(o=>o.cust==='You').reverse();
+ $('#my').innerHTML=`<h2>📦 Track my orders</h2>`+(mine.length?mine.map(o=>`<div style="margin:6px 0"><b>${o.id}</b> · ${esc(shopOf(o.shop).name)}<br>
+  <span class="mut">${o.items.map(i=>i.q+'× '+esc(prodOf(i.p).name)).join(', ')}</span><br>${inr(total(o))} · <span class="tag">${o.status}</span></div>`).join(''):'<p class="mut">No orders yet.</p>');
+}
+function placeOrder(){
+ const by={};for(const [id,q] of Object.entries(S.cart)){const p=prodOf(id);if(p.stock<q)return toast('Not enough stock for '+p.name);(by[p.shop]=by[p.shop]||[]).push({p:id,q})}
+ for(const [shop,items] of Object.entries(by)){items.forEach(i=>prodOf(i.p).stock-=i.q);orders.push({id:'#'+(oid++),shop,cust:'You',items,status:'New'})}
+ S.cart={};toast('Order placed! Sellers have been notified.');refreshBuyer();
+}
+
+/* ---------- SELLER ---------- */
+const NEXT={New:'Accepted',Accepted:'Packed',Packed:'Delivered'};
+function seller(){
+ const sh=shopOf(S.shop),mine=prods.filter(p=>p.shop===S.shop),os=orders.filter(o=>o.shop===S.shop);
+ const live=os.filter(o=>o.status!=='Cancelled'),rev=live.reduce((a,o)=>a+total(o),0),sm=sold();
+ const low=mine.filter(p=>p.stock<=5),newO=os.filter(o=>o.status==='New').length;
+ let body='';
+ if(S.tab==='dash'){
+  const ranked=mine.map(p=>({p,u:live.reduce((a,o)=>a+o.items.filter(i=>i.p===p.id).reduce((b,i)=>b+i.q,0),0)})).sort((a,b)=>b.u-a.u);
+  const mx=Math.max(1,...ranked.map(r=>r.u*r.p.price));
+  const hot=ranked.find(r=>r.u>0&&r.p.stock<=8);
+  const tip=hot?`Restock <b>${esc(hot.p.name)}</b>: ${hot.u} sold and only ${hot.p.stock} left.`:ranked[0]&&ranked[0].u?`<b>${esc(ranked[0].p.name)}</b> is your best seller. Try a bundle offer with a complementary item.`:'Add products and share your shop link to get your first orders.';
+  body=`<div class="kpis"><div class="card kpi"><span class="mut">Revenue</span><b>${inr(rev)}</b></div><div class="card kpi"><span class="mut">Orders</span><b>${live.length}</b></div>
+  <div class="card kpi"><span class="mut">New orders</span><b>${newO}</b></div><div class="card kpi"><span class="mut">Low-stock items</span><b class="${low.length?'low':''}">${low.length}</b></div></div>
+  <div class="tip">💡 <b>AI insight:</b> ${tip}</div><div class="card sec bars"><h2>Revenue by product</h2>`+
+  ranked.map(r=>`<div class="b"><span style="width:150px">${esc(r.p.name)}</span><i style="width:${r.u*r.p.price/mx*60}%"></i><span>${inr(r.u*r.p.price)}</span></div>`).join('')+`</div>`;
+ }else if(S.tab==='inv'){
+  body=`<div class="card scroll"><table><tr><th>Product</th><th>Category</th><th>Price ₹</th><th>Stock</th><th></th></tr>`+mine.map(p=>`<tr><td>${esc(p.name)}</td><td>${p.cat}</td>
+  <td><input type="number" min="0" style="width:80px" id="pr${p.id}" value="${p.price}"></td><td><input type="number" min="0" style="width:70px" id="st${p.id}" value="${p.stock}"> ${p.stock<=5?'<span class="low">low</span>':''}</td>
+  <td><button class="btn sm pri" data-a="save" data-id="${p.id}">Save</button> <button class="btn sm" data-a="del" data-id="${p.id}">Delete</button></td></tr>`).join('')+`</table></div>`;
+ }else if(S.tab==='ord'){
+  body=os.length?os.slice().reverse().map(o=>`<div class="card" style="margin-bottom:8px"><div class="row"><b>${o.id} · ${esc(o.cust)}</b><span class="tag">${o.status}</span></div>
+  <div class="mut">${o.items.map(i=>i.q+'× '+esc(prodOf(i.p).name)).join(', ')}</div><div class="row" style="margin-top:6px"><b>${inr(total(o))}</b><span>
+  ${NEXT[o.status]?`<button class="btn sm pri" data-a="adv" data-o="${o.id}">Mark ${NEXT[o.status]}</button>`:''}
+  ${o.status==='New'?`<button class="btn sm" data-a="cancel" data-o="${o.id}">Reject</button>`:''}</span></div></div>`).join(''):'<p class="mut">No orders yet.</p>';
+ }else{
+  body=`<div class="card"><h2>Add a product</h2><div class="form"><input id="an" placeholder="Product name, e.g. Wheat Flour 5kg"><select id="ac">${CATS.map(c=>`<option>${c}</option>`).join('')}</select>
+  <input id="ap" type="number" placeholder="Price ₹"><input id="as" type="number" placeholder="Stock qty"><textarea id="ad" rows="2" placeholder="Description" style="grid-column:1/-1"></textarea></div>
+  <div class="bar" style="margin:10px 0 0"><button class="btn acc" data-a="ai">✨ AI autofill from name/photo</button><label class="btn">📷 Upload photo<input type="file" accept="image/*" id="ph" hidden></label>
+  <button class="btn pri" data-a="addp">Publish product</button></div><div class="mut" id="aim" style="margin-top:8px">Type a name (or pick a photo) and let AI draft the category, description and a price range.</div></div>`;
+ }
+ $('#app').innerHTML=`<div class="bar"><select id="shopsel">${shops.map(s=>`<option value="${s.id}"${s.id===S.shop?' selected':''}>${esc(s.name)}</option>`).join('')}</select><span class="mut" style="align-self:center">Seller dashboard · ${sh.km} km from city centre</span></div>
+ <div class="tabs seg">${[['dash','📊 Dashboard'],['inv','📦 Inventory'],['ord','🧾 Orders'+(newO?' ('+newO+')':'')],['add','➕ Add product']].map(t=>`<button class="${S.tab===t[0]?'on':''}" data-a="tab" data-t="${t[0]}">${t[1]}</button>`).join('')}</div>${body}`;
+ const ph=$('#ph');if(ph)ph.onchange=()=>{if(ph.files[0]){const n=ph.files[0].name.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ');$('#an').value=$('#an').value||n;aiFill()}};
+}
+/* Simulated AI autofill (rule-based demo; swap with a vision/LLM API in production) */
+function aiFill(){
+ const n=($('#an').value||'').trim();if(!n)return toast('Enter a product name or upload a photo first');
+ const k=n.toLowerCase();let c='Grocery',lo=40,hi=200;
+ if(/milk|curd|paneer|butter|ghee|cheese/.test(k)){c='Dairy';lo=25;hi=120}
+ else if(/bread|cake|cookie|biscuit|puff|bun/.test(k)){c='Bakery';lo=20;hi=250}
+ else if(/tomato|onion|potato|banana|apple|mango|spinach|fruit|veg/.test(k)){c='Produce';lo=25;hi=120}
+ else if(/charger|cable|phone|earphone|bank|bulb|battery|usb/.test(k)){c='Electronics';lo=150;hi=1200}
+ $('#ac').value=c;if(!$('#ap').value)$('#ap').value=Math.round((lo+hi)/2/5)*5;if(!$('#as').value)$('#as').value=20;
+ $('#ad').value=`${n}: quality ${c.toLowerCase()} product from a trusted local shop. Fresh stock, fair neighbourhood price.`;
+ $('#aim').innerHTML=`✨ Suggested category <b>${c}</b> and a typical local price range of <b>${inr(lo)}–${inr(hi)}</b>. Review and publish.`;
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,id=b.dataset.id;
+ if(a==='view'){S.view=b.dataset.v;$('#vb').classList.toggle('on',S.view==='buyer');$('#vs').classList.toggle('on',S.view==='seller');S.view==='buyer'?buyer():seller()}
+ else if(a==='add'){const p=prodOf(id);if((S.cart[id]||0)>=p.stock)return toast('No more stock available');S.cart[id]=(S.cart[id]||0)+1;refreshBuyer()}
+ else if(a==='dec'){if(--S.cart[id]<=0)delete S.cart[id];refreshBuyer()}
+ else if(a==='cmp'){const n=b.dataset.n;S.cmp=S.cmp.includes(n)?S.cmp.filter(x=>x!==n):[...S.cmp,n].slice(-3);refreshBuyer()}
+ else if(a==='order'){placeOrder()}
+ else if(a==='mic'){const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return toast('Voice search is not supported in this browser');
+  const r=new R();r.lang='en-IN';r.onresult=ev=>{S.q=ev.results[0][0].transcript.replace(/\.$/,'');$('#q').value=S.q;refreshBuyer()};r.onerror=()=>toast('Could not hear you, try again');r.start();toast('Listening…')}
+ else if(a==='tab'){S.tab=b.dataset.t;seller()}
+ else if(a==='save'){const p=prodOf(id);p.price=+$('#pr'+id).value||0;p.stock=+$('#st'+id).value||0;toast('Saved');seller()}
+ else if(a==='del'){prods=prods.filter(p=>p.id!==id);seller()}
+ else if(a==='adv'){const o=orders.find(x=>x.id===b.dataset.o);o.status=NEXT[o.status];toast(o.id+' → '+o.status);seller()}
+ else if(a==='cancel'){const o=orders.find(x=>x.id===b.dataset.o);o.status='Cancelled';o.items.forEach(i=>prodOf(i.p).stock+=i.q);toast('Order rejected, stock restored');seller()}
+ else if(a==='ai'){aiFill()}
+ else if(a==='addp'){const n=$('#an').value.trim(),pr=+$('#ap').value,st=+$('#as').value;if(!n||!pr||!st)return toast('Fill name, price and stock');
+  prods.push(mk(S.shop,n,$('#ac').value,pr,st,$('#ad').value));toast('Published! Buyers can now see it.');S.tab='inv';seller()}
+});
+document.addEventListener('input',e=>{if(e.target.id==='q'){S.q=e.target.value;refreshBuyer()}});
+document.addEventListener('change',e=>{
+ if(e.target.id==='cat'){S.cat=e.target.value;refreshBuyer()}
+ else if(e.target.id==='sort'){S.sort=e.target.value;refreshBuyer()}
+ else if(e.target.id==='shopsel'){S.shop=e.target.value;seller()}
+});
+buyer();
+</script></body></html>
